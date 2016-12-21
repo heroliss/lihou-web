@@ -45,5 +45,14 @@ def test(coverage=False):
         COV.erase()
 
 
+@manager.command
+def profile(length=25, profile_dir=None):
+    """在代码分析器中启动服务器"""
+    from werkzeug.contrib.profiler import ProfilerMiddleware
+    app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[length],
+                                      profile_dir=profile_dir)
+    app.run()
+
+
 if __name__ == '__main__':
     manager.run()
