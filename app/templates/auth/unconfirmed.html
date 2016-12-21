@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}{{super()}}邮箱未验证{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+    <h1>
+        你好, {{ current_user.username }}!
+    </h1>
+    <h3>你的邮箱还未验证，请先验证你的邮箱</h3>
+    <p>
+        提示：验证邮箱时需要处于登录状态。另外，如果你没有看到确认邮件，通常在垃圾邮件箱或广告邮件中会发现 ("▔□▔)
+    </p>
+    <p>
+        需要再发一份？
+        <a href="{{ url_for('auth.resend_confirmation') }}">点我</a>
+    </p>
+</div>
+{% endblock %}

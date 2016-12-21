@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}{{super()}}更改用户头像{% endblock %}
+
+{% block page_content %}
+<div class="page-header">
+    <h1>更改头像</h1>
+</div>
+<article class="col-md-8">
+    <p>如果您想更改头像，请访问<a href="http://cn.gravatar.com/">Gravatar</a>（头像服务网站）。</p>
+    <p>使用您在本站注册的email注册一个Gravatar账号，即可修改头像。</p>
+    <h3>Gravatar介绍</h3>
+    <p>
+        Gravatar是Globally Recognized Avatar的缩写,是gravatar推出的一项服务，意为“全球通用头像”。
+        如果在Gravatar的服务器上放置了你自己的头像，那么在任何支持Gravatar的blog或者留言本上留言时，
+        只要提供你与这个头像关联的email地址，就能够显示出你的Gravatar头像来。
+    </p>
+
+    <p>
+        更多信息及如何申请，请详见
+        <a>
+            <a href="http://baike.baidu.com/subview/675247/675247.htm">百度百科
+        </a>
+    </p>
+</article>
+{% endblock %}

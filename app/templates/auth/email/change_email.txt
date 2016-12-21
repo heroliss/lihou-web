@@ -1,0 +1,11 @@
+你好 {{ user.username }},你刚刚申请更改邮箱地址
+
+请点击下面的链接来验证您的新邮箱:
+
+{{ url_for('auth.change_email', token=token, _external=True) }}
+
+谢谢！
+
+【LIHOU网站】
+
+提示: 您可以回复本邮件来提出意见或建议，但可能不能马上得到回复。

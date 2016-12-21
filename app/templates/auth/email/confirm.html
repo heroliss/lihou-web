@@ -1,0 +1,8 @@
+<p>你好 {{ user.username }},</p>
+<p>欢迎来到<b>LIHOU网站</b>!</p>
+<p>验证邮箱请 <a href="{{ url_for('auth.confirm', token=token, _external=True) }}">点击此处</a>.</p>
+<p>若上面的链接无法点击，您也可以复制下面的链接:</p>
+<p>{{ url_for('auth.confirm', token=token, _external=True) }}</p>
+<p>感谢注册,欢迎成为LIHOU网站一员！(*^_^*)</p>
+<p></p>
+<p><small>提示: 您可以回复本邮件来提出意见或建议，但可能不能马上得到回复。</small></p>

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% import "_macros.html" as macros %}
+
+{% block title %}{{super()}} - 用户信息 {{ user.username }}{% endblock %}
+{# <!--
+{% block head %}
+    {{ super() }}
+
+    <style type="text/css">
+            #allmap {width: 30%;height: 30%;overflow: hidden;margin:0;font-family:"微软雅黑";}
+    </style>
+        <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=hbTqCt2N2Knprv3lXLzGY2RHMxGMPdbV"></script>
+{% endblock %}
+{% block scripts %}
+    <script type="text/javascript">
+        // 百度地图API功能
+        var map = new BMap.Map("allmap");
+        var point = new BMap.Point(116.331398,39.897445);
+        map.centerAndZoom(point,12);
+        map.enableScrollWheelZoom();
+
+        function myFun(result){
+            var cityName = result.name;
+            map.setCenter(cityName);
+        }
+        var myCity = new BMap.LocalCity();
+        myCity.get(myFun);
+        map.setCenter("{{ user.loacation }}");
+
+
+    </script>
+{% endblock %} -->
+#}
+{% block page_content %}
+<!-- <div class="profile-map" id="allmap"></div> -->
+<meta name="viewport content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<div class="page-header">
+    <span class="hidden-xs">
+        <a href="{{url_for('auth.change_avatar')}}">
+            <img class="img-rounded profile-thumbnail" src="{{ user.gravatar(size=256) }}">
+        </a>
+    </span>
+    <span class="visible-xs">
+        <font size="7">{{ user.username }}<a href="{{url_for('auth.change_avatar')}}"></font>
+        <a href="{{url_for('auth.change_avatar')}}">
+            <img class="img-rounded profile-thumbnail" style="right:20px" src="{{ user.gravatar(size=100) }}">
+        </a>
+    </span>
+
+    <div class="profile-header">
+        <p>
+            <span class="hidden-xs"><font size="7">{{ user.username }}</font></span>
+            {% if current_user.is_authenticated and user != current_user and user.is_following(current_user) %}
+                <span class="label label-default">ta已关注你</span>
+            {% endif %}
+        </p>
+        {% if user.name or user.location %}
+        <p>
+            {% if user.name %}<font color="green">{{ user.name }}</font>{% endif %}
+            {% if user.location %}
+                来自 <a href="http://api.map.baidu.com/geocoder?address={{ user.location }}&output=html">{{ user.location }}</a><br>
+            {% endif %}
+        </p>
+        {% endif %}
+        {% if current_user.is_administrator() %}
+        <p><a href="mailto:{{ user.email }}">{{ user.email }}</a></p>
+        {% endif %}
+        {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}
+        <p>Member since {{ moment(user.member_since).format('L') }}. Last seen {{ moment(user.last_seen).fromNow() }}.</p>
+        <p>{{ user.posts.count() }} blog posts. {{ user.comments.count() }} comments.</p>
+        <p>注册时间：{{ moment(user.member_since).format('YYYY年M月D日a') }}</p>
+        <p>最近在线：{{ moment(user.last_seen).fromNow() }}</p>
+        <p>共有{{ user.posts.count() }}篇博文 &nbsp &nbsp &nbsp
+            <div class="visible-xs"></div>
+            <span>
+                <a href="{{ url_for('.followers', username=user.username) }}">ta的粉丝: <span class="badge">{{ user.followers.count() - 1}}</span></a>
+                &nbsp
+                <a href="{{ url_for('.followed_by', username=user.username) }}">ta的关注: <span class="badge">{{ user.followed.count() - 1}}</span></a>
+            </span>
+        </p>
+        <p>
+            {% if current_user.can(Permission.FOLLOW) and user != current_user %}
+                {% if not current_user.is_following(user) %}
+                <a href="{{ url_for('.follow', username=user.username) }}" class="btn btn-primary">关注</a>
+                {% else %}
+                <a href="{{ url_for('.unfollow', username=user.username) }}" class="btn btn-default">取消关注</a>
+                {% endif %}
+            {% endif %}
+
+            {% if user == current_user %}
+            <a class="btn btn-default" href="{{ url_for('.edit_profile') }}">编辑资料</a>
+            {% endif %}
+            {% if current_user.is_administrator() %}
+            <a class="btn btn-danger" href="{{ url_for('.edit_profile_admin', id=user.id) }}">编辑资料 [管理员]</a>
+            {% endif %}
+        </p>
+    </div>
+</div>
+<h3>{{ user.username }}的帖子</h3>
+{% include '_posts.html' %}
+{% if pagination %}
+<div class="pagination">
+    {{ macros.pagination_widget(pagination, '.user', username=user.username) }}
+</div>
+{% endif %}
+{% endblock %}
