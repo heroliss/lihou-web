@@ -10,16 +10,6 @@ from ..models import Permission, Role, User, Post, Comment
 from ..decorators import admin_required, permission_required
 
 
-@main.route('/office2013')
-def office2013():
-    return render_template('office2013.html')
-
-
-@main.route('/test')
-def testmap():
-    return render_template('test.html')
-
-
 @main.after_app_request
 def after_request(response):
     for query in get_debug_queries():
