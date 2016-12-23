@@ -19,7 +19,7 @@ class Config:
     FLASKY_SLOW_DB_QUERY_TIME = 0.5
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
-    # SQLALCHEMY_COMMIT_ON_TEARDOWN = True  # 该配置在 Flask-SQLAlchemy 2.0后被移除
+    SQLALCHEMY_COMMIT_ON_TEARDOWN = True  # 该配置在 Flask-SQLAlchemy 2.0有改动吗？
 
     @classmethod
     def init_app(cls, app):

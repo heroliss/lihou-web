@@ -26,10 +26,11 @@
                     <span class="label label-danger">编辑 [管理员]</span>
                 </a>
                 {% endif %}
-
+                <!--
                 <a href="{{ url_for('.post', id=post.id) }}">
                     <span class="label label-default">单独页面</span>
                 </a>
+                -->
                 <a href="{{ url_for('.post', id=post.id) }}#comments">
                     <span class="label label-primary">回复[{{ post.comments.count() }}]</span>
                 </a>
