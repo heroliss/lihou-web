@@ -40,7 +40,7 @@ def index():
         post = Post(body=form.body.data,
                     author=current_user._get_current_object())
         db.session.add(post)
-        return redirect(url_for('.index'))
+        return redirect(url_for('.index')+'#flash')
     page = request.args.get('page', 1, type=int)
     show_followed = False
     if current_user.is_authenticated:
@@ -160,7 +160,7 @@ def follow(username):
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('无此用户！')
-        return redirect(url_for('.index'))
+        return redirect(url_for('.index')+'#flash')
     if current_user.is_following(user):
         flash('你已经关注了这个用户')
         return redirect(url_for('.user', username=username))
@@ -176,7 +176,7 @@ def unfollow(username):
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('无此用户！')
-        return redirect(url_for('.index'))
+        return redirect(url_for('.index')+'#flash')
     if not current_user.is_following(user):
         flash('你没有关注这个用户')
         return redirect(url_for('.user', username=username))
@@ -190,7 +190,7 @@ def followers(username):
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('无此用户！')
-        return redirect(url_for('.index'))
+        return redirect(url_for('.index')+'#flash')
     page = request.args.get('page', 1, type=int)
     pagination = user.followers.paginate(
         page, per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'],
@@ -207,7 +207,7 @@ def followed_by(username):
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('无此用户！')
-        return redirect(url_for('.index'))
+        return redirect(url_for('.index')+'#flash')
     page = request.args.get('page', 1, type=int)
     pagination = user.followed.paginate(
         page, per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'],
@@ -222,7 +222,7 @@ def followed_by(username):
 @main.route('/all')
 @login_required
 def show_all():
-    resp = make_response(redirect(url_for('.index')))
+    resp = make_response(redirect(url_for('.index')+'#flash'))
     resp.set_cookie('show_followed', '', max_age=30 * 24 * 60 * 60)
     return resp
 
@@ -230,7 +230,7 @@ def show_all():
 @main.route('/followed')
 @login_required
 def show_followed():
-    resp = make_response(redirect(url_for('.index')))
+    resp = make_response(redirect(url_for('.index')+'#flash'))
     resp.set_cookie('show_followed', '1', max_age=30 * 24 * 60 * 60)
     return resp
 
