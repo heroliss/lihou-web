@@ -2,6 +2,14 @@ import os
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
+def database_url(name, default):
+    url = os.environ.get(name) or default
+    for prefix in ('postgres://', 'postgresql://'):
+        if url.startswith(prefix):
+            return 'postgresql+psycopg://' + url[len(prefix):]
+    return url
+
+
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or '据说这里要写个复杂的字符串？hard to guess string'
     SSL_DISABLE = True
@@ -18,7 +26,8 @@ class Config:
     FLASKY_COMMENTS_PER_PAGE = 30
     FLASKY_SLOW_DB_QUERY_TIME = 0.5
     SQLALCHEMY_RECORD_QUERIES = True
-    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SERVER_NAME = None
     # SQLALCHEMY_COMMIT_ON_TEARDOWN = True  # 该配置在 Flask-SQLAlchemy 2.0后被移除
 
     @classmethod
@@ -28,20 +37,21 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite')
+    SQLALCHEMY_DATABASE_URI = database_url('DEV_DATABASE_URL',
+        'sqlite:///' + os.path.join(basedir, 'data-dev.sqlite'))
 
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
+    SERVER_NAME = 'localhost'
+    MAIL_SUPPRESS_SEND = True
+    SQLALCHEMY_DATABASE_URI = database_url('TEST_DATABASE_URL', 'sqlite:///:memory:')
     WTF_CSRF_ENABLED = False
 
 
 class ProductionConfig(Config):
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+    SQLALCHEMY_DATABASE_URI = database_url('DATABASE_URL',
+        'sqlite:///' + os.path.join(basedir, 'data.sqlite'))
 
     @classmethod
     def init_app(cls, app):
@@ -67,6 +77,14 @@ class ProductionConfig(Config):
         app.logger.addHandler(mail_handler)
 
 
+class DemoConfig(DevelopmentConfig):
+    DEBUG = False
+    DEMO_MODE = True
+    MAIL_SUPPRESS_SEND = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'data-demo.sqlite')
+    BOOTSTRAP_SERVE_LOCAL = True
+
+
 class HerokuConfig(ProductionConfig):
     SSL_DISABLE = bool(os.environ.get('SSL_DISABLE'))
 
@@ -75,7 +93,7 @@ class HerokuConfig(ProductionConfig):
         ProductionConfig.init_app(app)
 
         # 处理代理服务器首部
-        from werkzeug.contrib.fixers import ProxyFix
+        from werkzeug.middleware.proxy_fix import ProxyFix
         app.wsgi_app = ProxyFix(app.wsgi_app)
 
         # 输出到 stderr
@@ -91,6 +109,7 @@ config = {
     'testing': TestingConfig,
     'production': ProductionConfig,
     'heroku': HerokuConfig,
+    'demo': DemoConfig,
 
     'default': DevelopmentConfig
 }

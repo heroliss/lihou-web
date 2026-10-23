@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect, request
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
 from flask_moment import Moment
@@ -31,8 +31,10 @@ def create_app(config_name):
     pagedown.init_app(app)
 
     if not app.debug and not app.testing and not app.config['SSL_DISABLE']:
-        from flask_sslify import SSLify
-        sslify = SSLify(app)
+        @app.before_request
+        def require_https():
+            if not request.is_secure:
+                return redirect(request.url.replace('http://', 'https://', 1), code=308)
 
     from .main import main as main_blueprint
     app.register_blueprint(main_blueprint)

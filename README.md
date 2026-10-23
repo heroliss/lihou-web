@@ -1,66 +1,50 @@
-# heroliss/lihou-web
+# lihou-web
 
-## 项目用途
+独立开发的 Flask 社交博客，最初于 2016 年运行在 Heroku。包含账户注册与邮件确认、登录、用户资料、角色权限、Markdown 发布与预览、评论、关注时间线、管理功能和 REST API。
 
-基于 Flask 的社交博客/论坛示例，包含注册、邮件确认、登录、角色权限、发帖、Markdown、评论、关注/时间线、头像、管理界面和 REST API。
+2026 年对运行环境做了兼容升级。保留原页面样式与功能结构，使用 Python 3.14、Flask 3.1 与 SQLAlchemy 2.1。旧 Heroku 数据没有找回；演示内容是单独创建的示例。
 
-## 当前状态
+## 本地演示（Windows PowerShell）
 
-- 建议分类：老旧 Flask 社交博客/学习项目
-- 生命周期：Dormant
-- 最近 push：2016-12-23T08:11:15Z
-- README 扫描状态：Missing
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+$env:FLASK_CONFIG = 'demo'
+.venv\Scripts\python manage.py seed-demo
+.venv\Scripts\python manage.py runserver --port 5000
+```
 
-最新 push 为 2016-12-23，长期冻结。适合标为完成的 Flask 学习/部署示例；需要旧环境或容器才能复现。
+打开 http://127.0.0.1:5000 。示例账户为 `demo@example.com`，密码为 `local-demo-only`，只用于独立本地演示。
 
-## 实际运行方式
+- demo 模式只使用 `data-demo.sqlite`，明确显示示例数据标识，并禁止发送邮件。
+- `seed-demo` 可重复执行，不清空数据；在其它配置中会拒绝运行。
+- 正常开发使用 development 配置和 `DEV_DATABASE_URL`；空数据库执行 `python manage.py deploy` 运行原迁移链并初始化角色。demo 的 seed 命令直接创建新样例结构，无需再执行 deploy。
+- macOS / Linux 使用 `.venv/bin/python`，设置环境变量使用 `export FLASK_CONFIG=demo`。
+- 可通过 `flask --app manage:app` 使用 Flask 原生命令；原 `manage.py runserver` 保留为本地开发别名。
 
-历史运行环境是 Python 3.5.2。创建旧版虚拟环境后安装 requirements/dev.txt，执行 python manage.py db upgrade、python manage.py deploy、python manage.py runserver；测试可执行 python manage.py test；生产入口为 gunicorn manage:app。当前 Flask 0.11、Flask-Script 和旧 Werkzeug 依赖已过时，现代 Python 大概率无法直接运行，且不建议直接公网部署。
+## 验证
 
-## 依赖与构建线索
+```powershell
+.venv\Scripts\python -m pip install -r requirements/dev.txt
+.venv\Scripts\python manage.py test
+```
 
-Python 3.5.2；Flask 0.11.1、SQLAlchemy 1.1.4 等老依赖；Heroku Procfile；仓库含 chromedriver.exe。邮件、数据库和 SECRET_KEY 依赖环境变量。
+本次 Windows / Python 3.14 验证：38 项测试中 37 项通过，1 项历史 Selenium 测试默认跳过；另在当前浏览器中完成登录、发布、Markdown 预览、资料页与评论持久化检查。全新 SQLite 上的 11 个迁移步骤已运行至 `20261023_hash`。
 
-## 目录与证据
+历史 Selenium 脚本属于旧版浏览器自动化资料，默认不启动浏览器；当前交互验收单独记录。现代 Flask / Python 依赖经过安装兼容检查，精确环境快照见 `requirements/verified-python314.txt`。
 
-app、migrations、tests、manage.py、Procfile、runtime.txt 齐全；Procfile 为 web: gunicorn manage:app。
+## 兼容升级
 
-顶层目录/文件线索：
+- Flask-Script 改为 Flask / Click CLI，Werkzeug 中间件使用现代入口；分页与查询记录适配 Flask-SQLAlchemy 3。
+- 使用现代 itsdangerous 的带过期时间签名令牌，旧 JWT 令牌不再兼容，需要重新申请确认或重置链接。
+- 表单操作显式提交数据库事务，防止请求结束后回滚；拒绝匿名发评论与站外登录重定向。
+- 适配 Bleach CSSSanitizer、WTForms DataRequired、Faker，修复假评论生成器未保存 Comment 的问题。
+- 密码散列字段扩为 256 字符以容纳现代 Werkzeug 格式，保留旧密码验证能力。
+- 保留历史 naive UTC 数据约定，并用现代 UTC 时钟生成时间；修正头像显示尺寸与 Markdown 代码块渲染。
+- 移除早期百度主动推送脚本，demo 使用本地图标，Bootstrap 静态资源本地提供。
 
-- `.gitignore`
-- `app`
-- `chromedriver.exe`
-- `config.py`
-- `manage.py`
-- `migrations`
-- `Procfile`
-- `requirements`
-- `requirements.txt`
-- `runtime.txt`
-- `tests`
+## 目录
 
-## 已知限制
+`app/` 是页面、模型、鉴权与 REST API；`migrations/` 保留完整迁移历史；`tests/` 是模型与 HTTP 回归；`manage.py` 是命令入口。
 
-- 本文档只依据 GitHub 元数据、README、构建文件、入口文件和目录证据整理，未进行完整构建或端到端运行验证。
-- 不确定的运行环境、密码、服务器地址和兼容版本不在此处臆测。
-
-## 需要确认
-
-是否需要保留为 Flask 学习成果？如果需要，建议另做“历史运行环境”说明，不升级代码。
-
-## 后续维护建议
-
-1. 先确认“继续维护、完成冻结、历史保留、归档候选”中的一种状态。
-2. 若继续保留，再补充一条可复现的运行验证记录和截图/输出。
-3. 若确认完成或废弃，只保留简短历史说明，不需要改代码。
-
-## 证据链接
-
-- 仓库：[heroliss/lihou-web](https://github.com/heroliss/lihou-web)
-- 默认分支：main
-- 主要语言：Python
-- stars / forks：0 / 0
-- 扫描时间：2026-10-11T05:10:08Z
-## 本地验证记录
-
-在 Python 3.14 临时副本中导入 `manage` 失败，原因是当前环境没有旧版 Flask；项目还锁定 Python 3.5.2 和一组已过时依赖，需要历史环境或容器才能复现。
+远端部署仍需单独配置 SECRET_KEY、数据库与邮件服务。`requirements/heroku.txt` 提供当前 Gunicorn / psycopg 3 可选依赖，支持将 Heroku 形式的 PostgreSQL URL 转为 psycopg 3 驱动；本次没有重新部署到 Heroku，也没有验证生产 PostgreSQL 或真实邮件投递。

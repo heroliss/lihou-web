@@ -37,7 +37,7 @@ class FlaskClientTestCase(unittest.TestCase):
             'email': 'john@example.com',
             'password': 'cat'
         }, follow_redirects=True)
-        self.assertTrue(re.search('你好,\s+john!'.encode(), response.data))
+        self.assertTrue(re.search(r'你好,\s+john!'.encode(), response.data))
         self.assertTrue(
             '你的邮箱还未验证，请先验证你的邮箱'.encode() in response.data)
 

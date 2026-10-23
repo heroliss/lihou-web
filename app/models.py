@@ -1,13 +1,19 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 from werkzeug.security import generate_password_hash, check_password_hash
-from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from .tokens import TokenSerializer as Serializer
+from bleach.css_sanitizer import CSSSanitizer
 from markdown import markdown
 import bleach
 from flask import current_app, request, url_for
 from flask_login import UserMixin, AnonymousUserMixin
 from app.exceptions import ValidationError
 from . import db, login_manager
+
+
+def utcnow():
+    """Keep the historical naive-UTC schema without deprecated utcnow."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Permission:
@@ -57,7 +63,7 @@ class Follow(db.Model):
                             primary_key=True)
     followed_id = db.Column(db.Integer, db.ForeignKey('users.id'),
                             primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=utcnow)
 
 
 class User(UserMixin, db.Model):
@@ -66,13 +72,13 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(64), unique=True, index=True)
     username = db.Column(db.String(64), unique=True, index=True)
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
-    password_hash = db.Column(db.String(128))
+    password_hash = db.Column(db.String(256))
     confirmed = db.Column(db.Boolean, default=False)
     name = db.Column(db.String(64))
     location = db.Column(db.String(64))
     about_me = db.Column(db.Text())
-    member_since = db.Column(db.DateTime(), default=datetime.utcnow)
-    last_seen = db.Column(db.DateTime(), default=datetime.utcnow)
+    member_since = db.Column(db.DateTime(), default=utcnow)
+    last_seen = db.Column(db.DateTime(), default=utcnow)
     avatar_hash = db.Column(db.String(32))
     posts = db.relationship('Post', backref='author', lazy='dynamic')
     followed = db.relationship('Follow',
@@ -91,18 +97,19 @@ class User(UserMixin, db.Model):
     def generate_fake(count=100):
         from sqlalchemy.exc import IntegrityError
         from random import seed
-        import forgery_py
+        from faker import Faker
+        fake = Faker()
 
         seed()
         for i in range(count):
-            u = User(email=forgery_py.internet.email_address(),
-                     username=forgery_py.internet.user_name(True),
-                     password=forgery_py.lorem_ipsum.word(),
+            u = User(email=fake.unique.email(),
+                     username=fake.unique.user_name(),
+                     password=fake.word(),
                      confirmed=True,
-                     name=forgery_py.name.full_name(),
-                     location=forgery_py.address.city(),
-                     about_me=forgery_py.lorem_ipsum.sentence(),
-                     member_since=forgery_py.date.date(True))
+                     name=fake.name(),
+                     location=fake.city(),
+                     about_me=fake.sentence(),
+                     member_since=fake.date_time_between(start_date='-5y'))
             db.session.add(u)
             try:
                 db.session.commit()
@@ -119,11 +126,12 @@ class User(UserMixin, db.Model):
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
-        if self.role is None:
-            if self.email == current_app.config['FLASKY_ADMIN']:
-                self.role = Role.query.filter_by(permissions=0xff).first()
+        with db.session.no_autoflush:
             if self.role is None:
-                self.role = Role.query.filter_by(default=True).first()
+                if self.email == current_app.config['FLASKY_ADMIN']:
+                    self.role = Role.query.filter_by(permissions=0xff).first()
+                if self.role is None:
+                    self.role = Role.query.filter_by(default=True).first()
         if self.email is not None and self.avatar_hash is None:
             self.avatar_hash = hashlib.md5(
                 self.email.encode('utf-8')).hexdigest()
@@ -203,10 +211,12 @@ class User(UserMixin, db.Model):
         return self.can(Permission.ADMINISTER)
 
     def ping(self):
-        self.last_seen = datetime.utcnow()
+        self.last_seen = utcnow()
         db.session.add(self)
 
     def gravatar(self, size=100, default='identicon', rating='g'):
+        if current_app.config.get('DEMO_MODE'):
+            return url_for('static', filename='市长.gif')
         if request.is_secure:
             url = 'https://secure.gravatar.com/avatar'
         else:
@@ -255,7 +265,7 @@ class User(UserMixin, db.Model):
     def generate_auth_token(self, expiration):
         s = Serializer(current_app.config['SECRET_KEY'],
                        expires_in=expiration)
-        return s.dumps({'id': self.id}).decode('ascii')
+        return s.dumps({'id': self.id})
 
     @staticmethod
     def verify_auth_token(token):
@@ -264,7 +274,7 @@ class User(UserMixin, db.Model):
             data = s.loads(token)
         except:
             return None
-        return User.query.get(data['id'])
+        return db.session.get(User, data['id'])
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -282,7 +292,7 @@ login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 
 class Post(db.Model):
@@ -290,21 +300,22 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
     body_html = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, index=True, default=utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     comments = db.relationship('Comment', backref='post', lazy='dynamic')
 
     @staticmethod
     def generate_fake(count=100):
         from random import seed, randint
-        import forgery_py
+        from faker import Faker
+        fake = Faker()
 
         seed()
         user_count = User.query.count()
         for i in range(count):
             u = User.query.offset(randint(0, user_count - 1)).first()
-            p = Post(body=forgery_py.lorem_ipsum.sentences(randint(1, 5)),
-                     timestamp=forgery_py.date.date(True),
+            p = Post(body=' '.join(fake.sentences(randint(1, 5))),
+                     timestamp=fake.date_time_between(start_date='-1y'),
                      author=u)
             db.session.add(p)
             db.session.commit()
@@ -317,8 +328,9 @@ class Post(db.Model):
         allowed_attributes = ['src','style','color','href']
         allowed_styles = ['color','font-weight']
         target.body_html = bleach.linkify(bleach.clean(
-            markdown(value, output_format='html'),
-            tags=allowed_tags,attributes=allowed_attributes,styles=allowed_styles, strip=True,
+            markdown(value, output_format='html', extensions=['fenced_code']),
+            tags=allowed_tags, attributes=allowed_attributes,
+            css_sanitizer=CSSSanitizer(allowed_css_properties=allowed_styles), strip=True,
             protocols = ['http', 'https', 'mailto','ed2k','thunder']))
 
     def to_json(self):
@@ -395,7 +407,7 @@ class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
     body_html = db.Column(db.Text)
-    timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, index=True, default=utcnow)
     disabled = db.Column(db.Boolean)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
@@ -403,7 +415,8 @@ class Comment(db.Model):
     @staticmethod
     def generate_fake(count:'生成数量'=100,post_id:'要添加评论的帖子id，该值默认-1表示所有帖子随机添加'=-1) -> '无返回值':
         from random import seed, randint
-        import forgery_py
+        from faker import Faker
+        fake = Faker()
 
         seed()
         user_count = User.query.count()
@@ -415,10 +428,10 @@ class Comment(db.Model):
             u = User.query.offset(randint(0, user_count - 1)).first()
             if post_id == -1:
                 p = Post.query.offset(randint(0,post_count -1)).first()
-            c = Comment(body=forgery_py.lorem_ipsum.sentences(randint(1, 5)),
-                     timestamp=forgery_py.date.date(True),
+            c = Comment(body=' '.join(fake.sentences(randint(1, 5))),
+                     timestamp=fake.date_time_between(start_date='-1y'),
                      author=u,post=p)
-            db.session.add(p)
+            db.session.add(c)
             db.session.commit()
 
     @staticmethod

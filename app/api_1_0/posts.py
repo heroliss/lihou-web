@@ -10,7 +10,7 @@ from .errors import forbidden
 def get_posts():
     page = request.args.get('page', 1, type=int)
     pagination = Post.query.paginate(
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
+        page=page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
     posts = pagination.items
     prev = None
@@ -29,7 +29,7 @@ def get_posts():
 
 @api.route('/posts/<int:id>')
 def get_post(id):
-    post = Post.query.get_or_404(id)
+    post = db.get_or_404(Post, id)
     return jsonify(post.to_json())
 
 
@@ -47,10 +47,11 @@ def new_post():
 @api.route('/posts/<int:id>', methods=['PUT'])
 @permission_required(Permission.WRITE_ARTICLES)
 def edit_post(id):
-    post = Post.query.get_or_404(id)
+    post = db.get_or_404(Post, id)
     if g.current_user != post.author and \
             not g.current_user.can(Permission.ADMINISTER):
         return forbidden('无权修改')
     post.body = request.json.get('body', post.body)
     db.session.add(post)
+    db.session.commit()
     return jsonify(post.to_json())

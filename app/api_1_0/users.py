@@ -1,3 +1,4 @@
+from .. import db
 from flask import jsonify, request, current_app, url_for
 from . import api
 from ..models import User, Post
@@ -5,16 +6,16 @@ from ..models import User, Post
 
 @api.route('/users/<int:id>')
 def get_user(id):
-    user = User.query.get_or_404(id)
+    user = db.get_or_404(User, id)
     return jsonify(user.to_json())
 
 
 @api.route('/users/<int:id>/posts/')
 def get_user_posts(id):
-    user = User.query.get_or_404(id)
+    user = db.get_or_404(User, id)
     page = request.args.get('page', 1, type=int)
     pagination = user.posts.order_by(Post.timestamp.desc()).paginate(
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
+        page=page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
     posts = pagination.items
     prev = None
@@ -33,10 +34,10 @@ def get_user_posts(id):
 
 @api.route('/users/<int:id>/timeline/')
 def get_user_followed_posts(id):
-    user = User.query.get_or_404(id)
+    user = db.get_or_404(User, id)
     page = request.args.get('page', 1, type=int)
     pagination = user.followed_posts.order_by(Post.timestamp.desc()).paginate(
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
+        page=page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
     posts = pagination.items
     prev = None

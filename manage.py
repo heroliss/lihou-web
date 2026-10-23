@@ -1,74 +1,77 @@
 #!/usr/bin/env python
+"""Flask 3 CLI entrypoint. Local demonstration uses FLASK_CONFIG=demo."""
 import os
-COV = None
-if os.environ.get('FLASK_COVERAGE'):
-    import coverage
-    COV = coverage.coverage(branch=True, include='app/*')
-    COV.start()
-
+import sys
+import unittest
+import click
+from flask.cli import ScriptInfo
+from flask_migrate import Migrate
 from app import create_app, db
 from app.models import User, Follow, Role, Permission, Post, Comment
-from flask_script import Manager, Shell
-from flask_migrate import Migrate, MigrateCommand
 
 app = create_app(os.getenv('FLASK_CONFIG') or 'default')
-manager = Manager(app)
 migrate = Migrate(app, db)
 
-
+@app.shell_context_processor
 def make_shell_context():
-    return dict(app=app, db=db, User=User, Follow=Follow, Role=Role,
+    return dict(db=db, User=User, Follow=Follow, Role=Role,
                 Permission=Permission, Post=Post, Comment=Comment)
-manager.add_command("shell", Shell(make_context=make_shell_context))
-manager.add_command('db', MigrateCommand)
 
+@app.cli.command('test')
+def test():
+    """Run model, HTTP client and API regression tests."""
+    result = unittest.TextTestRunner(verbosity=2).run(unittest.TestLoader().discover('tests'))
+    if not result.wasSuccessful():
+        raise click.ClickException('Test suite failed')
 
-@manager.command
-def test(coverage=False):
-    """Run the unit tests."""
-    if coverage and not os.environ.get('FLASK_COVERAGE'):
-        import sys
-        os.environ['FLASK_COVERAGE'] = '1'
-        os.execvp(sys.executable, [sys.executable] + sys.argv)
-    import unittest
-    tests = unittest.TestLoader().discover('tests')
-    unittest.TextTestRunner(verbosity=2).run(tests)
-    if COV:
-        COV.stop()
-        COV.save()
-        print('Coverage Summary:')
-        COV.report()
-        basedir = os.path.abspath(os.path.dirname(__file__))
-        covdir = os.path.join(basedir, 'tmp/coverage')
-        COV.html_report(directory=covdir)
-        print('HTML version: file://%s/index.html' % covdir)
-        COV.erase()
+@app.cli.command('runserver')
+@click.option('--host', default='127.0.0.1')
+@click.option('--port', default=5000, type=int)
+def runserver(host, port):
+    """Compatibility alias for a local Flask development server."""
+    app.run(host=host, port=port, use_reloader=False)
 
-
-@manager.command
-def profile(length=25, profile_dir=None):
-    """在代码分析器中启动服务器"""
-    from werkzeug.contrib.profiler import ProfilerMiddleware
-    app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[length],
-                                      profile_dir=profile_dir)
-    app.run()
-
-
-@manager.command
+@app.cli.command('deploy')
 def deploy():
-    """Run deployment tasks."""
+    """Apply existing migrations and initialize roles."""
     from flask_migrate import upgrade
-    from app.models import Role, User
-
-    # migrate database to latest revision
     upgrade()
-
-    # create user roles
     Role.insert_roles()
-
-    # create self-follows for all users
     User.add_self_follows()
 
+@app.cli.command('seed-demo')
+def seed_demo():
+    """Create repeatable sample content in the separate demo database."""
+    if not app.config.get('DEMO_MODE'):
+        raise click.ClickException('Set FLASK_CONFIG=demo; this command never seeds another database.')
+    db.create_all()
+    Role.insert_roles()
+    author = User.query.filter_by(username='demo').first()
+    if author is None:
+        author = User(email='demo@example.com', username='demo',
+                      password='local-demo-only', confirmed=True,
+                      name='LIHOU', location='本地示例',
+                      about_me='独立开发的 Flask 社交博客。这里的用户、文章、评论是新建演示数据。')
+        db.session.add(author)
+        db.session.commit()
+    elif author.email == 'demo@example.invalid':
+        author.email = 'demo@example.com'
+        db.session.commit()
+    if Post.query.filter_by(author_id=author.id).count() == 0:
+        posts = [
+            '# LIHOU 个人网站\n\n这是独立开发的 Flask 社交博客项目。\n\n支持 **Markdown 文章、评论、关注时间线和 REST API**。\n\n> 这段内容是 2026 年本地运行时创建的示例，不是旧 Heroku 数据。',
+            '## Markdown 编辑与阅读\n\n可在登录后发布内容，编辑器同时提供预览。\n\n- 标题与列表\n- 行内代码与代码段\n- 经过清理的富文本\n\n```python\nfrom app import create_app\napp = create_app("demo")\n```',
+            '## 账户与社交功能\n\n用户资料、关注与被关注列表、评论管理和权限控制共同组成了这个早期 Web 工程。\n\n源码中同时保留了 REST API 和回归测试。'
+        ]
+        for body in posts:
+            post = Post(body=body, author=author)
+            db.session.add(post)
+            db.session.flush()
+            db.session.add(Comment(body='本地示例评论：文章、Markdown 与回复功能已运行。', author=author, post=post, disabled=False))
+        db.session.commit()
+    click.echo('Demo database ready. Sample account: demo@example.com / local-demo-only')
+    click.echo('Sample content only; no Heroku or recovered historical data was used.')
 
 if __name__ == '__main__':
-    manager.run()
+    app.cli.main(args=sys.argv[1:], prog_name='python manage.py',
+                 obj=ScriptInfo(create_app=lambda: app))
