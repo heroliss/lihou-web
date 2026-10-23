@@ -4,6 +4,10 @@
 
 2026 年对运行环境做了兼容升级。保留原页面样式与功能结构，支持 Python 3.13 / 3.14、Flask 3.1 与 SQLAlchemy 2.1。旧 Heroku 数据没有找回；演示内容是单独创建的示例。
 
+**[在线体验](https://liss.pythonanywhere.com/demo)** · PythonAnywhere 免费托管 · HTTPS
+
+点击「进入演示」即可使用浏览器访客身份发文与评论，无需注册。保存的文章、评论和资料长期保留；清除 Cookie 或身份过期后内容仍在，但不能保证找回原身份继续编辑。
+
 ## 本地演示（Windows PowerShell）
 
 ```powershell
@@ -31,13 +35,15 @@ $env:FLASK_CONFIG = 'demo'
 
 Windows / Python 3.13.13 与 3.14 各运行 59 项测试，58 项通过，1 项历史 Selenium 测试默认跳过；其中 21 项验证访客真实路由、CSRF、隔离、容量、长期保留与一致备份 / 恢复。另完成本地 HTTP 发布、Markdown、资料、评论和越权边界检查，以及固定密钥下的真实进程重启验收。原全新 SQLite 的 11 个迁移步骤已运行至 `20261023_hash`，在线展示使用独立建表与缺失示例补充。
 
+PythonAnywhere / Python 3.13 已完成公网真实发文、Markdown 实时预览、评论与 Web Reload 后的同一身份 / 编辑权限 / 内容保留检查。平台强制 HTTPS 已启用，SQLite backup API 的初始与验收后快照已生成；Docker 镜像仍未实测。
+
 历史 Selenium 脚本属于旧版浏览器自动化资料，默认不启动浏览器；当前交互验收单独记录。现代 Flask / Python 依赖经过安装兼容检查，精确环境快照见 `requirements/verified-python314.txt`。
 
 ## 公开在线演示
 
 独立 `public-demo` 模式现为持久化在线展示：每个浏览器使用独立访客身份，可真实体验 Markdown 发布、评论、资料与关注；保存的文章、评论和访客数据长期保留，不因时间或 Cookie 过期自动删除。固定示例和其他访客的文章不可覆盖。保留表单保护、限额和限速，不开放注册、改密、管理与 API，不复用本地示例密码。
 
-已准备 PythonAnywhere 的 Python 3.13 WSGI 样例、SQLite 一致备份 / 显式恢复命令与使用持久卷的 Dockerfile。固定保留 SECRET_KEY 与数据库，30 天滚动 Cookie 可跨重启识别；清除 Cookie 后内容仍在，但不保证找回原身份。容量达到上限只停止新增，不清空数据。部署与备份见 **[在线展示指南](docs/public-demo.md)**。不再使用无法长期保留 SQLite 的 Render 免费配置；目前未创建托管账号或上线服务。
+已在 PythonAnywhere 的 Python 3.13 免费 Web app 上线，使用独立持久目录与固定私有密钥。30 天滚动 Cookie 可跨 Web Reload 识别，容量达到上限只停止新增，不清空数据。WSGI 样例、SQLite 一致备份 / 显式恢复和持久卷 Docker 配置见 **[在线展示指南](docs/public-demo.md)**。不使用无法长期保留 SQLite 的 Render 免费配置。
 
 ## 兼容升级
 
@@ -53,4 +59,4 @@ Windows / Python 3.13.13 与 3.14 各运行 59 项测试，58 项通过，1 项�
 
 `app/` 是页面、模型、鉴权与 REST API；`migrations/` 保留完整迁移历史；`tests/` 是模型与 HTTP 回归；`manage.py` 是命令入口。
 
-远端部署仍需单独配置 SECRET_KEY、数据库与邮件服务。`requirements/heroku.txt` 提供当前 Gunicorn / psycopg 3 可选依赖，支持将 Heroku 形式的 PostgreSQL URL 转为 psycopg 3 驱动；本次没有重新部署到 Heroku，也没有验证生产 PostgreSQL 或真实邮件投递。
+普通生产 / Heroku 配置仍需单独设置 SECRET_KEY、数据库与邮件；公开访客展示抑制邮件，不依赖邮件服务。`requirements/heroku.txt` 提供当前 Gunicorn / psycopg 3 可选依赖，支持将 Heroku 形式的 PostgreSQL URL 转为 psycopg 3 驱动；没有重新部署到 Heroku，也没有验证生产 PostgreSQL 或真实邮件投递。

@@ -2,6 +2,8 @@
 
 `public-demo` 保留历史配置名，当前用途是**长期保留内容的在线展示**。文章、评论、资料和关注关系不会因时间、Cookie 过期、应用重启或普通代码更新被自动删除。它不使用开发数据库、旧 Heroku 数据或真实邮箱。
 
+**已上线：[liss.pythonanywhere.com/demo](https://liss.pythonanywhere.com/demo)**。2026-10-24 在 PythonAnywhere 免费 Web app、Manual / Python 3.13 环境完成真实浏览器发文、Markdown 实时预览、评论，以及 Web Reload 后身份、编辑权限和内容保留验收。平台 Force HTTPS 已开启，HTTP 会跳转到 HTTPS；初始和验收后均已生成 SQLite 一致备份。以下步骤也可用于理解与维护该部署。
+
 ## 访客身份与内容
 
 - 点击「进入演示」为当前浏览器创建普通访客身份，无需共享密码、邮箱或注册。
@@ -62,7 +64,8 @@ PY
 2. Source code：`/home/你的用户名/lihou-web`；Virtualenv：`/home/你的用户名/.virtualenvs/lihou-web-demo`。
 3. 将 [WSGI 样例](../deploy/pythonanywhere_wsgi.py)复制到平台生成的 WSGI 配置，将 `YOUR_USERNAME` 替换成实际用户名。
 4. Reload，检查 `/healthz` 的 `{"status":"ok"}`，再在 `/demo` 进入、发布文章、评论、刷新和重载后核对。
-5. 每月查看 Web 控制台有效期并按提示续期；不要把免费网站当作免维护存档服务。
+5. Web 控制台开启 **Force HTTPS** 并 Reload，核对 HTTP 跳转 HTTPS、浏览器身份与发文正常。
+6. 每月查看 Web 控制台有效期并按提示续期；不要把免费网站当作免维护存档服务。
 
 WSGI 样例保留服务器提供的 `REMOTE_ADDR`。只有核验平台代理合同后才调整 `LIHOU_PROXY_HOPS`；公网 Cookie 默认只经 HTTPS 发送。
 
@@ -107,7 +110,7 @@ docker build -t lihou-web-demo .
 docker run --rm -p 7860:7860 -e SECRET_KEY --mount source=lihou-visitor-data,target=/data/lihou lihou-web-demo
 ```
 
-只有本机 HTTP 预览另传 `-e LIHOU_DEMO_COOKIE_SECURE=0`；公网保持默认 HTTPS Cookie。没有实测 Docker 镜像或远端托管，配置文件不等于实机验收。
+只有本机 HTTP 预览另传 `-e LIHOU_DEMO_COOKIE_SECURE=0`；公网保持默认 HTTPS Cookie。PythonAnywhere 公网部署已完成前述验收；Docker 镜像仍未实测。
 
 ## 本地验证
 
