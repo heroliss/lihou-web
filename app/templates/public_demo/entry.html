@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block title %}{{ super() }}在线体验{% endblock %}
+{% block page_content %}
+<div class="page-header"><h1>体验这个早期 Web 工程</h1></div>
+<div class="row">
+    <div class="col-md-7">
+        <p class="lead">从一篇 Markdown 开始。</p>
+        <p>进入后会为当前浏览器创建独立临时账户。你可以发布与编辑自己的文章、回复示例文章、修改个人资料，也可以体验关注时间线。</p>
+        <p>固定示例文章保留原样；访客内容为公开演示数据，下一次重置时清除。演示不需要邮箱、密码或其他个人信息。</p>
+        {{ wtf.quick_form(form) }}
+        <p style="margin-top:16px"><a href="{{ url_for('main.index') }}">先浏览示例文章</a></p>
+    </div>
+</div>
+{% endblock %}

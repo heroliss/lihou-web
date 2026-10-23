@@ -160,7 +160,7 @@ def edit(id):
     return render_template('edit_post.html', form=form)
 
 
-@main.route('/follow/<username>')
+@main.route('/follow/<username>', methods=['GET', 'POST'])
 @login_required
 @permission_required(Permission.FOLLOW)
 def follow(username):
@@ -177,7 +177,7 @@ def follow(username):
     return redirect(url_for('.user', username=username))
 
 
-@main.route('/unfollow/<username>')
+@main.route('/unfollow/<username>', methods=['GET', 'POST'])
 @login_required
 @permission_required(Permission.FOLLOW)
 def unfollow(username):

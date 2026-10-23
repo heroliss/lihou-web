@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -85,6 +86,50 @@ class DemoConfig(DevelopmentConfig):
     BOOTSTRAP_SERVE_LOCAL = True
 
 
+class PublicDemoConfig(DemoConfig):
+    """Dedicated disposable data, never a production database or shared login."""
+    PUBLIC_DEMO = True
+    MAX_CONTENT_LENGTH = 16 * 1024
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=2)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    PUBLIC_DEMO_MAX_VISITORS = 80
+    PUBLIC_DEMO_MAX_POSTS = 10
+    PUBLIC_DEMO_MAX_COMMENTS = 20
+    PUBLIC_DEMO_MAX_FOLLOWS = 10
+    PUBLIC_DEMO_MAX_BODY = 4000
+    PUBLIC_DEMO_MAX_COMMENT_BODY = 1000
+    PUBLIC_DEMO_WRITE_LIMIT = 20
+    PUBLIC_DEMO_START_LIMIT = 10
+    PUBLIC_DEMO_RATE_WINDOW = 60
+
+    @classmethod
+    def init_app(cls, app):
+        secret = os.environ.get('SECRET_KEY', '')
+        if len(secret) < 32:
+            raise RuntimeError('public-demo requires a random SECRET_KEY of at least 32 characters.')
+        storage = os.path.abspath(os.environ.get('LIHOU_DEMO_DIR') or
+                                  os.path.join(basedir, 'instance', 'public-demo'))
+        os.makedirs(storage, exist_ok=True)
+        reset_seconds = int(os.environ.get('LIHOU_DEMO_RESET_SECONDS', '86400'))
+        if reset_seconds < 60:
+            raise RuntimeError('LIHOU_DEMO_RESET_SECONDS must be at least 60.')
+        app.config.update(
+            SECRET_KEY=secret, FLASKY_ADMIN=None, PUBLIC_DEMO_DIR=storage,
+            SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(storage, 'public-demo.sqlite'),
+            PUBLIC_DEMO_RESET_SECONDS=reset_seconds,
+            SESSION_COOKIE_SECURE=os.environ.get('LIHOU_DEMO_COOKIE_SECURE', '1') != '0',
+            SESSION_COOKIE_NAME='lihou_demo',
+        )
+        proxy_hops = int(os.environ.get('LIHOU_PROXY_HOPS', '0'))
+        if not 0 <= proxy_hops <= 2:
+            raise RuntimeError('LIHOU_PROXY_HOPS must be 0, 1 or 2.')
+        if proxy_hops:
+            from werkzeug.middleware.proxy_fix import ProxyFix
+            app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_hops, x_proto=proxy_hops,
+                                   x_host=0, x_port=0, x_prefix=0)
+
+
 class HerokuConfig(ProductionConfig):
     SSL_DISABLE = bool(os.environ.get('SSL_DISABLE'))
 
@@ -110,6 +155,7 @@ config = {
     'production': ProductionConfig,
     'heroku': HerokuConfig,
     'demo': DemoConfig,
+    'public-demo': PublicDemoConfig,
 
     'default': DevelopmentConfig
 }

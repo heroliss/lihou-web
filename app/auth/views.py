@@ -1,4 +1,4 @@
-from flask import render_template, redirect, request, url_for, flash
+from flask import render_template, redirect, request, url_for, flash, current_app
 from flask_login import login_user, logout_user, login_required, \
     current_user
 from . import auth
@@ -11,6 +11,9 @@ from .forms import LoginForm, RegistrationForm, ChangePasswordForm,\
 
 @auth.before_app_request
 def before_request():
+    if current_app.config.get('PUBLIC_DEMO') and request.endpoint in {
+            'static', 'bootstrap.static', 'pagedown.static'}:
+        return
     if current_user.is_authenticated:
         current_user.ping()
         db.session.commit()

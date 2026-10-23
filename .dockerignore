@@ -1,0 +1,12 @@
+.git
+.venv
+.venv-*
+venv
+instance
+*.sqlite
+*.sqlite-*
+__pycache__
+*.pyc
+.env
+*.log
+verification
