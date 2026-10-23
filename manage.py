@@ -52,25 +52,45 @@ def seed_demo():
 
 @app.cli.command('prepare-public-demo')
 def prepare_public_demo():
-    """Initialize or check only the isolated public sandbox."""
+    """Add missing tables / samples without deleting existing visitor data."""
     sandbox = app.extensions.get('public_demo')
     if sandbox is None:
         raise click.ClickException('Set FLASK_CONFIG=public-demo first.')
     with sandbox.exclusive():
         sandbox.prepare()
-    click.echo('Public sandbox ready. Visitors enter through /demo; no shared password.')
+    click.echo('Persistent visitor space ready. Saved content is retained; enter through /demo.')
 
 
-@app.cli.command('reset-public-demo')
-@click.option('--yes', is_flag=True, help='Confirm disposal of the isolated public demo data.')
-def reset_public_demo(yes):
-    """Reset only public-demo.sqlite, keeping every other database untouched."""
+@app.cli.command('backup-public-demo')
+@click.option('--output', required=True, type=click.Path(path_type=str))
+def backup_public_demo(output):
+    """Create a consistent SQLite snapshot; never overwrite an existing file."""
+    sandbox = app.extensions.get('public_demo')
+    if sandbox is None:
+        raise click.ClickException('Requires FLASK_CONFIG=public-demo.')
+    try:
+        with sandbox.exclusive():
+            destination = sandbox.backup(output)
+    except (OSError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(f'Consistent SQLite backup saved: {destination}')
+
+
+@app.cli.command('restore-public-demo')
+@click.option('--input', 'source', required=True, type=click.Path(exists=True, path_type=str))
+@click.option('--yes', is_flag=True, help='Explicitly replace current data with this backup.')
+def restore_public_demo(source, yes):
+    """DANGER: replace current data with a backup; revoke browser logins."""
     sandbox = app.extensions.get('public_demo')
     if sandbox is None or not yes:
-        raise click.ClickException('Requires FLASK_CONFIG=public-demo and --yes.')
-    with sandbox.exclusive():
-        sandbox.reset()
-    click.echo('Public sandbox reset. Existing demo sessions have expired.')
+        raise click.ClickException('Requires FLASK_CONFIG=public-demo and explicit --yes; this replaces current data.')
+    try:
+        with sandbox.exclusive():
+            safety = sandbox.restore(source)
+    except (OSError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(f'Restored snapshot. Pre-restore safety backup kept: {safety}')
+    click.echo('Previous browser logins are invalid; saved accounts and content in the snapshot remain.')
 
 if __name__ == '__main__':
     app.cli.main(args=sys.argv[1:], prog_name='python manage.py',

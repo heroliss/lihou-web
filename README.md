@@ -29,15 +29,15 @@ $env:FLASK_CONFIG = 'demo'
 .venv\Scripts\python manage.py test
 ```
 
-Windows / Python 3.13.13 与 3.14 各运行 53 项测试，52 项通过，1 项历史 Selenium 测试默认跳过；其中 15 项验证公开沙盒的真实路由、CSRF、访客隔离、限额与重置。另完成本地 HTTP 发布、Markdown、资料、评论和越权边界检查。原全新 SQLite 的 11 个迁移步骤已运行至 `20261023_hash`，公开沙盒使用独立建表与示例初始化。
+Windows / Python 3.13.13 与 3.14 各运行 59 项测试，58 项通过，1 项历史 Selenium 测试默认跳过；其中 21 项验证访客真实路由、CSRF、隔离、容量、长期保留与一致备份 / 恢复。另完成本地 HTTP 发布、Markdown、资料、评论和越权边界检查，以及固定密钥下的真实进程重启验收。原全新 SQLite 的 11 个迁移步骤已运行至 `20261023_hash`，在线展示使用独立建表与缺失示例补充。
 
 历史 Selenium 脚本属于旧版浏览器自动化资料，默认不启动浏览器；当前交互验收单独记录。现代 Flask / Python 依赖经过安装兼容检查，精确环境快照见 `requirements/verified-python314.txt`。
 
 ## 公开在线演示
 
-新增独立 `public-demo` 模式：访客一键创建临时普通账户，可真实体验 Markdown 发布、评论、资料与关注；固定示例和其他访客的文章不可覆盖。公开演示不开放注册、改密、管理和 API，使用独立 SQLite、表单保护、限额与过期重置，不复用本地示例密码。
+独立 `public-demo` 模式现为持久化在线展示：每个浏览器使用独立访客身份，可真实体验 Markdown 发布、评论、资料与关注；保存的文章、评论和访客数据长期保留，不因时间或 Cookie 过期自动删除。固定示例和其他访客的文章不可覆盖。保留表单保护、限额和限速，不开放注册、改密、管理与 API，不复用本地示例密码。
 
-已准备 PythonAnywhere 的 Python 3.13 WSGI 样例、Render 免费服务配置和平台无关 Dockerfile。部署、随机密钥、数据重置与平台限制见 **[公开演示指南](docs/public-demo.md)**。目前未创建托管账号或上线服务。
+已准备 PythonAnywhere 的 Python 3.13 WSGI 样例、SQLite 一致备份 / 显式恢复命令与使用持久卷的 Dockerfile。固定保留 SECRET_KEY 与数据库，30 天滚动 Cookie 可跨重启识别；清除 Cookie 后内容仍在，但不保证找回原身份。容量达到上限只停止新增，不清空数据。部署与备份见 **[在线展示指南](docs/public-demo.md)**。不再使用无法长期保留 SQLite 的 Render 免费配置；目前未创建托管账号或上线服务。
 
 ## 兼容升级
 

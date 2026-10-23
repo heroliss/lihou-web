@@ -60,7 +60,7 @@
 {% block content %}
 <div class="container">
     {% if config.get('PUBLIC_DEMO') %}
-    <div class="alert alert-info">在线演示 · 每位访客使用独立临时账户，可发布文章、评论和编辑资料。内容会在下一次重置时清除，请勿填写真实信息。</div>
+    <div class="alert alert-info">在线展示 · 文章、评论与访客资料会长期保留并公开显示。每个浏览器使用独立访客身份，请勿填写真实信息。</div>
     {% elif config.get('DEMO_MODE') %}
     <div class="alert alert-info">本地演示 · 示例用户与文章，仅用于展示原项目功能；不是找回的历史网站数据。</div>
     {% endif %}

@@ -87,13 +87,14 @@ class DemoConfig(DevelopmentConfig):
 
 
 class PublicDemoConfig(DemoConfig):
-    """Dedicated disposable data, never a production database or shared login."""
+    """Persistent visitor showcase; the historical config name stays compatible."""
     PUBLIC_DEMO = True
     MAX_CONTENT_LENGTH = 16 * 1024
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=2)
+    PERMANENT_SESSION_LIFETIME = timedelta(days=30)
+    SESSION_REFRESH_EACH_REQUEST = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
-    PUBLIC_DEMO_MAX_VISITORS = 80
+    PUBLIC_DEMO_MAX_VISITORS = 2000
     PUBLIC_DEMO_MAX_POSTS = 10
     PUBLIC_DEMO_MAX_COMMENTS = 20
     PUBLIC_DEMO_MAX_FOLLOWS = 10
@@ -111,13 +112,15 @@ class PublicDemoConfig(DemoConfig):
         storage = os.path.abspath(os.environ.get('LIHOU_DEMO_DIR') or
                                   os.path.join(basedir, 'instance', 'public-demo'))
         os.makedirs(storage, exist_ok=True)
-        reset_seconds = int(os.environ.get('LIHOU_DEMO_RESET_SECONDS', '86400'))
-        if reset_seconds < 60:
-            raise RuntimeError('LIHOU_DEMO_RESET_SECONDS must be at least 60.')
+        max_visitors = int(os.environ.get('LIHOU_DEMO_MAX_VISITORS', '2000'))
+        max_storage_mib = int(os.environ.get('LIHOU_DEMO_MAX_STORAGE_MIB', '128'))
+        if max_visitors < 1 or max_storage_mib < 1:
+            raise RuntimeError('Visitor and storage limits must be positive.')
         app.config.update(
             SECRET_KEY=secret, FLASKY_ADMIN=None, PUBLIC_DEMO_DIR=storage,
             SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(storage, 'public-demo.sqlite'),
-            PUBLIC_DEMO_RESET_SECONDS=reset_seconds,
+            PUBLIC_DEMO_MAX_VISITORS=max_visitors,
+            PUBLIC_DEMO_MAX_STORAGE_BYTES=max_storage_mib * 1024 * 1024,
             SESSION_COOKIE_SECURE=os.environ.get('LIHOU_DEMO_COOKIE_SECURE', '1') != '0',
             SESSION_COOKIE_NAME='lihou_demo',
         )

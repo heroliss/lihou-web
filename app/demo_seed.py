@@ -1,4 +1,4 @@
-"""Original local sample content, shared by the isolated public sandbox."""
+"""Add missing example content without deleting stored visitor content."""
 from . import db
 from .models import Comment, Post, Role, User
 
