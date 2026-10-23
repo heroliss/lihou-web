@@ -23,6 +23,7 @@
   {% if not current_user.is_authenticated %}<section class="aside-join"><h2>从写下第一句开始</h2><p>无需注册，也可以发布文章、参与讨论。</p><a class="button" href="{{ url_for('public_demo.entry') if config.get('PUBLIC_DEMO') else url_for('auth.register') }}">开始写作 {{ ui.icon('edit') }}</a><p class="aside-account">已有账号？<a href="{{ url_for('auth.login') }}">登录</a></p></section>
   {% else %}<section class="aside-profile"><a class="aside-person" href="{{ url_for('main.user', username=current_user.username) }}">{{ ui.avatar(current_user) }}<span><strong>{{ ui.author_name(current_user) }}</strong>{{ ui.identity_badge(current_user) }}</span></a><p>{{ current_user.about_me or '在这里记录自己的想法。' }}</p><a class="quiet-link" href="{{ url_for('main.user', username=current_user.username) }}">我的主页 {{ ui.icon('arrow') }}</a>{% if current_user.is_visitor|default(false) %}<a class="identity-upgrade" href="{{ url_for('auth.register') }}">设置账号，保留这个身份 {{ ui.icon('lock') }}</a>{% endif %}</section>{% endif %}
   <section class="aside-note"><h2>让交流更轻松</h2><p>友善表达，尊重不同的声音。发布前，请确认内容适合公开分享。</p></section>
+  <section class="aside-note"><h2>从作品开始一段对话</h2><p>游戏、工具、AI 与交互实验。体验作品，再聊聊你的发现。</p><a class="quiet-link" href="{{ url_for('community.portfolio', path='projects/') }}">探索全部作品 {{ ui.icon('arrow') }}</a></section>
 </aside>
 </div>
 {% endblock %}

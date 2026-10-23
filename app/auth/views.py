@@ -1,4 +1,4 @@
-from flask import render_template, redirect, request, url_for, flash, current_app
+from flask import render_template, redirect, request, url_for, flash, current_app, abort
 from flask_login import login_user, logout_user, login_required, \
     current_user
 from . import auth
@@ -12,12 +12,13 @@ from .forms import LoginForm, RegistrationForm, ChangePasswordForm,\
 @auth.before_app_request
 def before_request():
     if current_app.config.get('PUBLIC_DEMO') and request.endpoint in {
-            'static', 'bootstrap.static', 'pagedown.static'}:
+            'static', 'bootstrap.static', 'pagedown.static',
+            'community.portfolio', 'community.portfolio_index'}:
         return
     if current_user.is_authenticated:
         current_user.ping()
         db.session.commit()
-        if not current_user.confirmed \
+        if not current_app.config.get('PUBLIC_DEMO') and not current_user.confirmed \
                 and (request.endpoint or '')[:5] != 'auth.' \
                 and request.endpoint != 'static':
             return redirect(url_for('auth.unconfirmed'))
@@ -25,6 +26,9 @@ def before_request():
 
 @auth.route('/unconfirmed')
 def unconfirmed():
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import unconfirmed
+        return unconfirmed()
     if current_user.is_anonymous or current_user.confirmed:
         return redirect(url_for('main.index'))
     return render_template('auth/unconfirmed.html')
@@ -77,8 +81,12 @@ def register():
 
 
 @auth.route('/confirm/<token>')
-@login_required
 def confirm(token):
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import confirm
+        return confirm(token)
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login'))
     if current_user.confirmed:
         return redirect(url_for('main.index'))
     if current_user.confirm(token):
@@ -89,9 +97,15 @@ def confirm(token):
     return redirect(url_for('main.index'))
 
 
-@auth.route('/confirm')
-@login_required
+@auth.route('/confirm', methods=['GET', 'POST'])
 def resend_confirmation():
+    if current_app.config.get('PUBLIC_DEMO'):
+        if request.method != 'POST':
+            abort(405)
+        from ..public_accounts import resend_confirmation
+        return resend_confirmation()
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login'))
     token = current_user.generate_confirmation_token()
     send_email(current_user.email, '验证账户',
                'auth/email/confirm', user=current_user, token=token)
@@ -108,6 +122,9 @@ def change_password():
             current_user.password = form.password.data
             db.session.add(current_user)
             db.session.commit()
+            if current_app.config.get('PUBLIC_DEMO'):
+                from ..public_accounts import refresh_identity_session
+                refresh_identity_session(current_user._get_current_object())
             flash('你的密码更改成功！')
             return redirect(url_for('main.index'))
         else:
@@ -117,6 +134,9 @@ def change_password():
 
 @auth.route('/reset', methods=['GET', 'POST'])
 def password_reset_request():
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import password_reset_request
+        return password_reset_request()
     if not current_user.is_anonymous:
         return redirect(url_for('main.index'))
     form = PasswordResetRequestForm()
@@ -135,6 +155,9 @@ def password_reset_request():
 
 @auth.route('/reset/<token>', methods=['GET', 'POST'])
 def password_reset(token):
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import password_reset
+        return password_reset(token)
     if not current_user.is_anonymous:
         return redirect(url_for('main.index'))
     form = PasswordResetForm()
@@ -154,6 +177,9 @@ def password_reset(token):
 @auth.route('/change-email', methods=['GET', 'POST'])
 @login_required
 def change_email_request():
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import change_email_request
+        return change_email_request()
     form = ChangeEmailForm()
     if form.validate_on_submit():
         if current_user.verify_password(form.password.data):
@@ -170,8 +196,12 @@ def change_email_request():
 
 
 @auth.route('/change-email/<token>')
-@login_required
 def change_email(token):
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import change_email
+        return change_email(token)
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login'))
     if current_user.change_email(token):
         db.session.commit()
         flash('邮箱地址更改成功！')

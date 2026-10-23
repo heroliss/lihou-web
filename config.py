@@ -29,6 +29,18 @@ class Config:
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SERVER_NAME = None
+    # HTTPS API mail is independent of the historical Flask-Mail / SMTP mode.
+    LISS_EMAIL_ACCOUNTS = os.environ.get('LISS_EMAIL_ACCOUNTS', '0') == '1'
+    LISS_MAIL_PROVIDER = os.environ.get('LISS_MAIL_PROVIDER', 'brevo')
+    LISS_MAIL_API_KEY = os.environ.get('LISS_MAIL_API_KEY', '')
+    LISS_MAIL_SENDER_EMAIL = os.environ.get('LISS_MAIL_SENDER_EMAIL', '')
+    LISS_MAIL_SENDER_NAME = os.environ.get('LISS_MAIL_SENDER_NAME', 'LISS')
+    LISS_PUBLIC_BASE_URL = os.environ.get('LISS_PUBLIC_BASE_URL', '')
+    LISS_MAIL_TIMEOUT = 10
+    LISS_EMAIL_TOKEN_SECONDS = 3600
+    PUBLIC_MAIL_COOLDOWN_SECONDS = 60
+    PUBLIC_MAIL_IP_WINDOW = 3600
+    PUBLIC_MAIL_IP_LIMIT = 20
     # SQLALCHEMY_COMMIT_ON_TEARDOWN = True  # 该配置在 Flask-SQLAlchemy 2.0后被移除
 
     @classmethod

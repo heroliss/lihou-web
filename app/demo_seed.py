@@ -19,6 +19,10 @@ WELCOME_POSTS = [
     '## 关于身份与内容\n\n访客身份保存在当前浏览器的 Cookie 中。清除 Cookie、无痕浏览或换一台设备后，可能无法重新认回该身份，但已发布的内容仍会保留。\n\n**创建账号时，当前访客的文章、评论与关注关系会一起保留。** 已有账号可以直接用用户名和密码登录；登录其他账号不会合并两个身份的内容。\n\n本站不要求邮箱，因此暂不提供邮件找回密码。请保存好自己的账号信息，也请勿发布敏感资料。',
 ]
 LEGACY_COMMENT = '示例评论：文章、Markdown 与回复功能展示。'
+EARLIER_ACCOUNT_GUIDE = WELCOME_POSTS[2]
+WELCOME_POSTS[2] = EARLIER_ACCOUNT_GUIDE.replace(
+    '本站不要求邮箱，因此暂不提供邮件找回密码。请保存好自己的账号信息，也请勿发布敏感资料。',
+    '注册方式以注册页当前开放的功能为准。邮箱注册开放后，确认邮件中的链接即可验证邮箱；已绑定并验证的邮箱可用于找回密码。旧用户名账号仍可登录，之后再绑定邮箱。\n\n访客身份和未绑定邮箱的账号无法通过邮件找回。请保存好登录信息，也请勿发布敏感资料。')
 WELCOME_COMMENT = '欢迎在这里留言，分享你的想法。'
 LEGACY_BIO = '独立开发的 Flask 社交博客；这里的用户、文章和评论是新建示例。'
 
@@ -27,6 +31,8 @@ def _upgrade_untouched_welcome(author):
     """Back up, then update exact known seed text, preserving IDs and replies."""
     changes = [(post, WELCOME_POSTS[LEGACY_POSTS.index(post.body)])
                for post in author.posts.all() if post.body in LEGACY_POSTS]
+    changes += [(post, WELCOME_POSTS[2]) for post in author.posts.all()
+                if post.body == EARLIER_ACCOUNT_GUIDE]
     comments = [comment for comment in author.comments.all()
                 if comment.body == LEGACY_COMMENT and comment.post.author_id == author.id]
     metadata = {}

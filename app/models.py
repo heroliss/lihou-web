@@ -7,6 +7,8 @@ from markdown import markdown
 import bleach
 from flask import current_app, request, url_for
 from flask_login import UserMixin, AnonymousUserMixin
+from itsdangerous import BadData
+import hmac
 from app.exceptions import ValidationError
 from . import db, login_manager
 
@@ -168,6 +170,34 @@ class User(UserMixin, db.Model):
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def generate_account_token(self, purpose, new_email=None, expiration=None):
+        """Public-account actions are scoped and invalidated by credential changes."""
+        if purpose not in {'confirm-email', 'reset-password', 'change-email'}:
+            raise ValueError('Unsupported account-token purpose.')
+        serializer = Serializer(current_app.config['SECRET_KEY'], expiration if expiration is not None
+                                else current_app.config.get('LISS_EMAIL_TOKEN_SECONDS', 3600))
+        return serializer.dumps({'purpose': purpose, 'uid': self.id,
+            'email': self.email, 'new_email': new_email,
+            'credential': hashlib.sha256((self.password_hash or '').encode()).hexdigest()})
+
+    @staticmethod
+    def load_account_token(token, purpose):
+        serializer = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = serializer.loads(token)
+        except (BadData, ValueError, TypeError):
+            return None
+        if (not isinstance(data, dict) or data.get('purpose') != purpose
+                or type(data.get('uid')) is not int):
+            return None
+        user = db.session.get(User, data['uid'])
+        if not user or not user.is_registered or user.email != data.get('email'):
+            return None
+        fingerprint = hashlib.sha256((user.password_hash or '').encode()).hexdigest()
+        if not isinstance(data.get('credential'), str) or not hmac.compare_digest(fingerprint, data['credential']):
+            return None
+        return user, data
 
     def generate_confirmation_token(self, expiration=3600):
         s = Serializer(current_app.config['SECRET_KEY'], expiration)

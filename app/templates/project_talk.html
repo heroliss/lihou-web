@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% import "_forms.html" as forms %}
+{% import "_macros.html" as macros %}
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}{{ project[0] }} · 交流{% endblock %}
+{% block page_content %}
+<div class="community-layout">
+<div class="feed-column">
+  <header class="project-discussion-heading"><a class="quiet-link" href="{{ url_for('community.portfolio', path='projects/' ~ slug ~ '/') }}">{{ ui.icon('back') }}返回作品</a><p class="project-eyebrow">{{ project[1] }}</p><h1>{{ project[0] }}</h1><p>分享使用心得、提出问题，或聊聊下一步可以怎样做。</p></header>
+  {% if current_user.can(Permission.WRITE_ARTICLES) %}
+  <details class="composer" id="write"{% if form.body.errors %} open{% endif %}><summary>{{ ui.avatar(current_user, 'avatar-small') }}<span>关于这个作品，你有什么想法？<small>发起一段讨论</small></span>{{ ui.icon('edit') }}</summary><div class="composer-content">{{ forms.render_form(form, '发布讨论', 'writing-form') }}</div></details>
+  {% else %}<div class="discussion-join"><p>从一个问题或一个发现开始。</p><a class="button" href="{{ url_for('public_demo.entry', next=url_for('community.project_talk', slug=slug)) if config.get('PUBLIC_DEMO') else url_for('auth.login', next=request.path) }}">参与交流 {{ ui.icon('comment') }}</a><small>无需注册，也可以用访客身份分享。</small></div>{% endif %}
+  <div class="feed-toolbar"><h2 class="discussion-list-title">项目讨论</h2><span class="feed-total">{{ pagination.total }} 篇</span></div>
+  {% include '_posts.html' %}
+  {% if not posts %}{{ ui.empty_state('第一段对话，从这里开始。', '目前还没有讨论。体验过作品后，欢迎留下一个想法。') }}{% endif %}
+  {{ macros.pagination_widget(pagination, 'community.project_talk', slug=slug) }}
+</div>
+<aside class="community-aside" aria-label="作品与交流入口"><section class="aside-about"><h2>边体验，边交流。</h2><p>截图、技术说明与运行方式在作品页；问题与想法留在这里，方便继续讨论。</p><a class="quiet-link" href="{{ url_for('community.portfolio', path='projects/' ~ slug ~ '/') }}">查看这个作品 {{ ui.icon('arrow') }}</a></section><section class="aside-note"><h2>更多作品</h2><div class="project-talk-list">{% for other_slug, other in project_catalog.items() %}{% if other_slug != slug %}<a href="{{ url_for('community.project_talk', slug=other_slug) }}">{{ other[0] }} {{ ui.icon('arrow') }}</a>{% endif %}{% endfor %}</div></section></aside>
+</div>
+{% endblock %}
+{% block scripts %}{{ super() }}{{ pagedown.include_pagedown() }}{% endblock %}

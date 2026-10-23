@@ -8,13 +8,14 @@
 <meta name="description" content="LISS，一个写作与交流的小地方。记录想法，分享发现，让对话继续。">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 <script>try{var t=localStorage.getItem('liss-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-2">
+<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-3">
 {% endblock %}
 {% block navbar %}
 <a class="skip-link" href="#main-content">跳到正文</a>
 <header class="site-header"><nav class="site-nav page-shell" aria-label="主导航">
   <a class="wordmark" href="{{ url_for('main.index') }}" aria-label="LISS 首页">LISS<span class="brand-dot" aria-hidden="true"></span></a>
   <a class="nav-feed{% if request.endpoint in ['main.index','main.show_all','main.show_followed'] %} is-active{% endif %}" href="{{ url_for('main.index') }}">文章</a>
+  <a class="nav-works" href="{{ url_for('community.portfolio') }}">作品</a>
   <div class="nav-actions">
     <button class="icon-button theme-toggle" type="button" data-theme-toggle aria-label="切换为浅色主题" title="切换主题">{{ ui.icon('sun', 'theme-sun') }}{{ ui.icon('moon', 'theme-moon') }}</button>
     {% if current_user.is_authenticated %}
@@ -26,6 +27,7 @@
         {% if current_user.is_visitor|default(false) %}<a href="{{ url_for('auth.register') }}">{{ ui.icon('lock') }}保留为正式账号</a>
         {% else %}<a href="{{ url_for('auth.change_password') }}">{{ ui.icon('lock') }}修改密码</a>{% endif %}
         {% if not config.get('PUBLIC_DEMO') %}<a href="{{ url_for('auth.change_email_request') }}">修改邮箱</a>{% endif %}
+        {% if config.get('PUBLIC_DEMO') and current_user.is_registered %}<a href="{{ url_for('auth.unconfirmed') }}">{{ ui.icon('lock') }}邮箱与账号</a>{% endif %}
         {% if current_user.can(Permission.MODERATE_COMMENTS) %}<a href="{{ url_for('main.moderate') }}">管理评论</a>{% endif %}
         {% if config.get('PUBLIC_DEMO') %}<form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">退出当前身份</button></form>{% if current_user.is_visitor|default(false) %}<p class="logout-note">内容仍会保留。退出前，建议先设置账号。</p>{% endif %}{% else %}<a href="{{ url_for('auth.logout') }}">退出当前身份</a>{% endif %}
       </div>
@@ -40,9 +42,10 @@
 {% block content %}
 <main class="page-shell site-main" id="main-content" tabindex="-1">
   {% for message in get_flashed_messages() %}<div class="site-flash" role="status"><span>{{ message }}</span><button class="icon-button" type="button" data-dismiss-message aria-label="关闭提示">{{ ui.icon('close') }}</button></div>{% endfor %}
+  {% if config.get('PUBLIC_DEMO') and current_user.is_authenticated and current_user.is_registered and current_user.email and not current_user.confirmed %}<div class="email-status" role="status"><p>邮箱尚未确认。你仍可以继续写作和交流。</p><a href="{{ url_for('auth.unconfirmed') }}">确认邮箱 {{ ui.icon('arrow') }}</a></div>{% endif %}
   {% block page_content %}{% endblock %}
 </main>
-<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>by Liss</span></a><p>记录想法，分享发现，让对话继续。</p><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
+<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>by Liss</span></a><p>记录想法，分享发现，让对话继续。</p><a href="{{ url_for('community.portfolio') }}" class="footer-top">探索作品 {{ ui.icon('arrow') }}</a><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
 {% endblock %}
 {% block scripts %}
 {{ super() }}

@@ -6,6 +6,8 @@ worker and a file lock coordinate writes, online snapshots and explicit restores
 from collections import OrderedDict, deque
 from contextlib import contextmanager
 import json
+import hashlib
+import hmac
 import os
 from pathlib import Path
 import secrets
@@ -84,6 +86,8 @@ class Sandbox:
             db.session.execute(text('CREATE TABLE IF NOT EXISTS public_demo_state '
                                     '(id INTEGER PRIMARY KEY CHECK (id=1), '
                                     'identity_epoch TEXT NOT NULL, created_at REAL NOT NULL)'))
+            db.session.execute(text('CREATE TABLE IF NOT EXISTS public_mail_rate '
+                                    '(bucket TEXT PRIMARY KEY, started_at REAL NOT NULL, hits INTEGER NOT NULL)'))
             if db.session.execute(text('SELECT identity_epoch FROM public_demo_state WHERE id=1')).first() is None:
                 epoch = secrets.token_urlsafe(24)
                 try:
@@ -164,11 +168,42 @@ class Sandbox:
             abort(429, description='站点的身份容量暂时已满；已有账号仍可登录，已有内容会继续保留。')
 
     def quota(self, suffix):
-        prefix = 'PUBLIC_ACCOUNT_' if current_user.is_registered else 'PUBLIC_DEMO_'
+        prefix = 'PUBLIC_ACCOUNT_' if current_user.is_registered and current_user.confirmed else 'PUBLIC_DEMO_'
         return self.app.config[prefix + suffix]
 
+    def limit_mail(self, email):
+        """Persist short-lived send limits, never recipient addresses or raw IPs.
+
+        Called after form / CSRF validation, under the existing worker/file lock.
+        Counting unknown recipients equally avoids exposing account membership.
+        """
+        now = time.time()
+        secret = self.app.config['SECRET_KEY'].encode('utf-8')
+        def bucket(label, value):
+            return hmac.new(secret, (label + ':' + value).encode('utf-8'), hashlib.sha256).hexdigest()
+        rules = [
+            (bucket('email', email.strip().lower()), self.app.config.get('PUBLIC_MAIL_COOLDOWN_SECONDS', 60), 1),
+            (bucket('ip', request.remote_addr or 'unknown'), self.app.config.get('PUBLIC_MAIL_IP_WINDOW', 3600),
+             self.app.config.get('PUBLIC_MAIL_IP_LIMIT', 20)),
+        ]
+        db.session.execute(text('DELETE FROM public_mail_rate WHERE started_at < :old'), {'old': now - 3600})
+        updates = []
+        for key, window, maximum in rules:
+            row = db.session.execute(text('SELECT started_at, hits FROM public_mail_rate WHERE bucket=:key'), {'key': key}).first()
+            if row and row[0] > now - window and row[1] >= maximum:
+                g.public_demo_retry_after = max(1, int(row[0] + window - now) + 1)
+                abort(429, description='邮件请求有些频繁，请稍后再试。')
+            updates.append({'key': key, 'started': row[0] if row and row[0] > now - window else now,
+                            'hits': row[1] + 1 if row and row[0] > now - window else 1})
+        if db.session.execute(text('SELECT COUNT(*) FROM public_mail_rate')).scalar() > 4096:
+            abort(429, description='邮件服务暂时繁忙，请稍后再试。')
+        for values in updates:
+            db.session.execute(text('INSERT INTO public_mail_rate (bucket, started_at, hits) VALUES (:key, :started, :hits) '
+                                    'ON CONFLICT(bucket) DO UPDATE SET started_at=:started, hits=:hits'), values)
+        db.session.commit()
+
     def before_request(self):
-        if request.endpoint in {'static', 'bootstrap.static', 'pagedown.static'}:
+        if request.endpoint in {'static', 'bootstrap.static', 'pagedown.static', 'community.portfolio'}:
             return
         lease = self.exclusive()
         lease.__enter__()
@@ -177,12 +212,17 @@ class Sandbox:
         if session.get('public_demo_epoch') != self.epoch:
             session.clear()
             session['public_demo_epoch'] = self.epoch
+        from .public_accounts import validate_identity_session
+        validate_identity_session()
         endpoint = request.endpoint or ''
         if endpoint.startswith('api.'):
             abort(403, description='此站点暂不开放公共 API。')
         if endpoint.startswith('auth.') and endpoint not in {
-                'auth.login', 'auth.register', 'auth.logout', 'auth.change_password'}:
-            abort(403, description='此站点暂不提供邮件验证、邮箱找回或外部头像设置。')
+                'auth.login', 'auth.register', 'auth.logout', 'auth.change_password',
+                'auth.unconfirmed', 'auth.confirm', 'auth.resend_confirmation',
+                'auth.password_reset_request', 'auth.password_reset',
+                'auth.change_email_request', 'auth.change_email'}:
+            abort(403, description='此站点暂不开放该账户操作。')
         if endpoint == 'auth.change_password' and not (self.participant() and current_user.is_registered):
             abort(403, description='访客可先创建账号，再设置或更改登录密码。')
         if endpoint == 'auth.logout' and request.method != 'POST':
@@ -192,6 +232,8 @@ class Sandbox:
             abort(403, description='此站点不开放公共管理操作。')
         if endpoint in {'main.follow', 'main.unfollow'} and request.method != 'POST':
             abort(405, description='请通过页面按钮提交关注操作。')
+        if endpoint in {'auth.confirm', 'auth.change_email'}:
+            self.limit('auth')
         if request.method in {'GET', 'HEAD', 'OPTIONS'}:
             return
         if endpoint == 'public_demo.entry':
@@ -208,21 +250,26 @@ class Sandbox:
         if endpoint == 'auth.change_password':
             self.limit('auth')
             return
+        if endpoint in {'auth.resend_confirmation', 'auth.password_reset_request',
+                        'auth.password_reset', 'auth.change_email_request'}:
+            self.limit('auth')
+            self.check_storage()
+            return
         if endpoint == 'auth.logout':
             return  # CSRFProtect validates the POST before the auth view runs.
         allowed = {'main.index', 'main.post', 'main.edit', 'main.edit_profile',
-                   'main.follow', 'main.unfollow'}
+                   'main.follow', 'main.unfollow', 'community.project_talk'}
         if endpoint not in allowed or not self.participant():
             abort(403, description='请先以访客身份加入，或登录已有账号。')
         self.limit('write')
         self.check_storage()
-        if endpoint in {'main.index', 'main.edit', 'main.post'}:
+        if endpoint in {'main.index', 'main.edit', 'main.post', 'community.project_talk'}:
             maximum = self.quota('MAX_COMMENT_BODY' if endpoint == 'main.post' else 'MAX_BODY')
             if len(request.form.get('body', '')) > maximum:
                 abort(413, description=f'内容请控制在 {maximum} 字以内。')
         if endpoint == 'main.edit_profile' and len(request.form.get('about_me', '')) > self.quota('MAX_PROFILE_BODY'):
             abort(413, description=f'个人简介请控制在 {self.quota("MAX_PROFILE_BODY")} 字以内。')
-        if endpoint == 'main.index' and current_user.posts.count() >= self.quota('MAX_POSTS'):
+        if endpoint in {'main.index', 'community.project_talk'} and current_user.posts.count() >= self.quota('MAX_POSTS'):
             abort(429, description=f'当前身份最多发布 {self.quota("MAX_POSTS")} 篇文章，可继续编辑已有文章。')
         if endpoint == 'main.post' and current_user.comments.count() >= self.quota('MAX_COMMENTS'):
             abort(429, description='当前身份的评论数量已达上限，已有评论会继续保留。')
@@ -242,7 +289,8 @@ class Sandbox:
 def entry():
     sandbox = current_app.extensions['public_demo']
     if sandbox.visitor():
-        return redirect(url_for('main.index'))
+        from .public_accounts import destination
+        return redirect(destination())
     form = EntryForm()
     if form.validate_on_submit():
         sandbox.check_identity_capacity()
@@ -255,9 +303,9 @@ def entry():
                     role=Role.query.filter_by(default=True).first())
         db.session.add(user)
         db.session.commit()
-        from .public_accounts import establish_identity
+        from .public_accounts import establish_identity, destination
         establish_identity(user)
-        return redirect(url_for('main.index'))
+        return redirect(destination())
     return render_template('public_demo/entry.html', form=form)
 
 

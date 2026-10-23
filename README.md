@@ -6,7 +6,13 @@
 
 无需注册即可用浏览器访客身份发文、编辑、评论、关注作者和完善资料。创建用户名与密码账号后，可在其他浏览器继续登录；从当前访客升级时保留同一用户 ID、全部文章、评论和关注关系。文章与身份长期存储，不会自动重置或清空。
 
-访客身份依靠当前浏览器的 Cookie；清除 Cookie、无痕浏览或换设备后可能无法认回，但已发布内容仍保留。账号不要求邮箱，暂不提供邮件找回密码，请保存好登录信息。登录已有账号只切换身份，不自动合并当前访客内容。
+访客身份依靠当前浏览器的 Cookie；清除 Cookie、无痕浏览或换设备后可能无法认回，但已发布内容仍保留。邮件服务配置就绪后，默认邮箱注册，支持验证邮件、重发、密码找回与绑定 / 更换邮箱。当前未配置真实发信时继续提供用户名注册，并明确提示；原用户名账号始终兼容。登录已有账号只切换身份，不自动合并当前访客内容。
+
+## 作品与交流
+
+作品展厅位于 `/works/`，以 Astro 静态构建运行在同一个域名下。社区导航可以进入作品，12 项作品各自有 `/projects/<slug>/talk/` 讨论页；这里发表的讨论属于真实文章，可在文章流阅读、继续评论并由原作者编辑，不生成虚构帖子。原文章保留，新表只记录项目关联。
+
+邮箱验证 / 找回通过 Brevo 或 Resend 的 HTTPS API，凭据仅放服务器私有配置。用途独立的签名链接 1 小时有效；密码重置会撤销其他旧登录会话。已有用户名账号可登录后绑定邮箱；从访客升级继续复用原用户 ID。完整配置步骤与免费服务限制见 [部署指南](docs/public-demo.md)。没有真实发信前，不将测试 outbox 结果当作投递成功。
 
 ## 运行
 
@@ -49,7 +55,7 @@ PythonAnywhere / Python 3.13 的原访客版本已完成公网发文、Markdown 
 - Flask Blueprint、Jinja、SQLAlchemy、Flask-Login / WTF、Markdown + Bleach、REST API 与角色权限，前端支持实时预览和深浅主题。
 - Flask-Script 已迁移至 Flask / Click CLI，适配现代分页、查询记录、WTForms、Faker 与 Bleach CSSSanitizer。
 - 使用带时效签名令牌，现代 Werkzeug 密码散列字段扩为 256 字符；保留历史密码验证和 naive UTC 数据约定。
-- 访客和账号类型持久化，公开站无 SMTP 依赖，旧邮件注册机制保留在普通开发 / 生产模式。
+- 访客和账号类型持久化，公开站使用可选 HTTPS 事务邮件，无 SMTP 依赖；普通开发 / 生产模式保留原邮件机制。
 - `app/` 为应用与接口，`migrations/` 为原迁移链与新版增量，`tests/` 为回归测试，`manage.py` / `deploy/` 为管理和部署入口。
 
 普通开发使用 `development` + `DEV_DATABASE_URL`，空库执行 `python manage.py deploy` 升级迁移并初始化角色。独立本地开发样例可使用 `demo`、`seed-demo` 和 `demo@example.com` / `local-demo-only`；该密码不适用于公开站。生产 / Heroku 模式需自行配置数据库、固定 SECRET_KEY 与邮件；`requirements/heroku.txt` 提供 Gunicorn / psycopg 3 可选依赖。

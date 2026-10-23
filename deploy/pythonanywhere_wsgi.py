@@ -15,6 +15,12 @@ if not project.is_dir() and (account / 'lihou-web').is_dir():
 private = account / '.config' / 'lihou-web-demo.json'
 settings = json.loads(private.read_text(encoding='utf-8'))
 os.environ['SECRET_KEY'] = settings['SECRET_KEY']
+# Explicit allowlist: never expose or print credentials from this private file.
+for name in ('LISS_EMAIL_ACCOUNTS', 'LISS_MAIL_PROVIDER', 'LISS_MAIL_API_KEY',
+             'LISS_MAIL_SENDER_EMAIL', 'LISS_MAIL_SENDER_NAME', 'LISS_PUBLIC_BASE_URL',
+             'LISS_MAIL_TIMEOUT', 'LISS_PORTFOLIO_DIR'):
+    if name in settings:
+        os.environ[name] = str(settings[name])
 os.environ['FLASK_CONFIG'] = 'public-demo'
 os.environ['LISS_DATA_DIR'] = str(account / 'lihou-demo-data')  # Existing persistent storage.
 os.environ['LIHOU_DEMO_DIR'] = os.environ['LISS_DATA_DIR']

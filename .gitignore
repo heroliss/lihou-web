@@ -45,3 +45,4 @@ venv
 .venv/
 .venv-*/
 instance/
+portfolio/

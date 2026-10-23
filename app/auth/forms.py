@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 
 class PublicLoginForm(FlaskForm):
-    username = StringField('用户名', validators=[Required(), Length(3, 32)])
+    username = StringField('邮箱或原用户名', validators=[Required(), Length(3, 254)])
     password = PasswordField('密码', validators=[Required(), Length(8, 128)])
     submit = SubmitField('登录')
 
@@ -28,6 +28,51 @@ class PublicRegistrationForm(FlaskForm):
             raise ValidationError('此用户名已保留，请选择其他名称。')
         if User.query.filter(func.lower(User.username) == name).first():
             raise ValidationError('此用户名已被使用。')
+
+
+def normalize_email(value):
+    return (value or '').strip().lower()
+
+
+class EmailRegistrationForm(FlaskForm):
+    email = StringField('电子邮箱', validators=[Required(), Length(3, 64), Email()],
+                        filters=[normalize_email],
+                        description='用于登录、验证身份和找回密码，不公开显示。')
+    nickname = StringField('昵称（可选）', validators=[Optional(), Length(max=64)])
+    password = PasswordField('密码', validators=[Required(), Length(8, 128),
+        EqualTo('password2', message='两次密码不一致。')])
+    password2 = PasswordField('确认密码', validators=[Required()])
+    submit = SubmitField('创建账号并发送验证邮件')
+
+    def validate_email(self, field):
+        if User.query.filter(func.lower(User.email) == field.data).first():
+            raise ValidationError('这个邮箱已被使用，请登录或找回密码。')
+
+
+class EmailResetRequestForm(FlaskForm):
+    email = StringField('电子邮箱', validators=[Required(), Length(3, 64), Email()],
+                        filters=[normalize_email])
+    submit = SubmitField('发送找回邮件')
+
+
+class EmailPasswordResetForm(FlaskForm):
+    password = PasswordField('新密码', validators=[Required(), Length(8, 128),
+        EqualTo('password2', message='两次密码不一致。')])
+    password2 = PasswordField('确认新密码', validators=[Required()])
+    submit = SubmitField('保存新密码')
+
+
+class AccountEmailForm(FlaskForm):
+    email = StringField('电子邮箱', validators=[Required(), Length(3, 64), Email()],
+                        filters=[normalize_email])
+    password = PasswordField('当前密码', validators=[Required(), Length(8, 128)])
+    submit = SubmitField('发送邮箱验证邮件')
+
+    def validate_email(self, field):
+        from flask_login import current_user
+        other = User.query.filter(func.lower(User.email) == field.data).first()
+        if other and other.id != current_user.id:
+            raise ValidationError('这个邮箱已被使用。')
 
 
 class LoginForm(FlaskForm):

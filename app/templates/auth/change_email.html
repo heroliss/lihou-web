@@ -1,4 +1,4 @@
 {% extends "base.html" %}
 {% import "_forms.html" as forms %}
 {% block title %}{{ super() }}更改邮箱{% endblock %}
-{% block page_content %}<div class="settings-column"><header class="page-heading"><h1>更改邮箱</h1><p>新的邮箱需要完成验证后才能生效。</p></header>{{ forms.render_form(form, '更新邮箱') }}</div>{% endblock %}
+{% block page_content %}<div class="settings-column"><header class="page-heading"><h1>{{ '绑定邮箱' if not current_user.email else '更改邮箱' }}</h1><p>新的邮箱完成验证后才会生效。原账号和所有内容都会保留。</p></header>{% if config.get('PUBLIC_DEMO') and not email_ready|default(false) %}<p class="form-notice">邮件服务暂未开通，请稍后再试。现有登录方式保持可用。</p>{% else %}{{ forms.render_form(form, '发送邮箱验证邮件' if config.get('PUBLIC_DEMO') else '更新邮箱') }}{% endif %}</div>{% endblock %}

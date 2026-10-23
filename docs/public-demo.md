@@ -2,6 +2,43 @@
 
 LISS 是访客优先、可选账号的持久化写作与交流站点。内部配置名 `public-demo` 保留兼容；正式入口 `/welcome`，旧 `/demo` 重定向。文章、评论、资料与关注关系不会因 Cookie 过期、重启或普通代码更新自动删除。
 
+2026-10-24 新增同域 `/works/` 作品展厅和 12 个项目讨论入口，以及可配置的邮箱注册 / 确认 / 找回。真实邮件服务未配置时，旧用户名注册仍可用并显示提示。下面旧账号描述以本节邮箱配置与当前页面为准。
+
+## 作品站和项目讨论
+
+工程展厅以 `SITE_BASE=/works/` 构建，在仓库旁的 `portfolio/` 发布目录运行；源码保留于主工作区 `site/`。可以通过私有变量 `LISS_PORTFOLIO_DIR` 指定其他专用构建目录。不要指向源码、数据目录或密钥目录。`/works/`、`/works/projects/<slug>/`、媒体与脚本均由独立静态路由提供，不占用访客数据库的请求锁。
+
+项目讨论地址为 `/projects/<slug>/talk/`，固定 12 个 slug，讨论仍存入 `posts`，新 `project_entries` 表关联项目。新访客加入后会回到对应讨论页；普通发文、评论、编辑、配额与 CSRF 保护继续适用。GET 不创建任何项目帖子。
+
+部署已审核的构建包时，先按通常流程备份并更新源码，然后运行 `deploy/install_portfolio.py --url <GitHub-Release附件URL> --sha256 <已核对SHA256>`。安装器验证包体摘要、子路径和路径边界，保留旧构建作为 `portfolio-previous-*`；不会删除数据库或源码。发布媒体约 18.3 MB，不是每次访问的流量。作品目录无需 Python 重新构建或 Node 环境。
+
+## 邮箱注册、验证与密码找回
+
+当前推荐 Brevo 免费事务邮件 API（300 封 / 日，免信用卡）；PythonAnywhere 免费白名单支持 `api.brevo.com`，使用 HTTPS 接口。无自有域名可先验证单个发件邮箱，但 Brevo 可能临时改写发件地址；长期建议自有域名认证。Resend 也受支持，正式发给任意访客需认证自己的域名，测试域名只能向账户本人发送。额度与条件以服务商实际审核和官方页面为准，不保证永远免费或每封进收件箱。
+
+先由站点所有者注册服务并验证发件邮箱。将以下字段加入现有服务器私有 JSON（继续保留原 `SECRET_KEY`，不得提交真实凭据到 Git）：
+
+```json
+{
+  "LISS_EMAIL_ACCOUNTS": "1",
+  "LISS_MAIL_PROVIDER": "brevo",
+  "LISS_MAIL_API_KEY": "在私有服务器配置中填写",
+  "LISS_MAIL_SENDER_EMAIL": "已在服务商验证的发件邮箱",
+  "LISS_MAIL_SENDER_NAME": "LISS",
+  "LISS_PUBLIC_BASE_URL": "https://liss.pythonanywhere.com"
+}
+```
+
+使用更新后的 WSGI / 管理脚本加载显式允许的这些配置，Reload 后默认切换为邮箱注册。未提供完整配置则保持兼容注册，绝不伪报已发邮件。`LISS_PUBLIC_BASE_URL` 必须是固定 HTTPS 源站，验证和找回链接不使用访客提交的 Host。`LISS_MAIL_TIMEOUT` 默认 10 秒；失败提示可重试，服务商接受邮件也不等于用户收件箱已收到。
+
+确认、绑定与找回链接 1 小时有效，绑定用户 ID、用途、邮箱和密码摘要；重置密码后原链接不可再用，其他浏览器旧登录会话下次请求会撤销。本人正常改密会保持当前会话，撤销其他旧会话。本次更新前的无凭据指纹注册账号需重新登录一次；旧访客 Cookie 与全部内容继续保留。
+
+未验证账号仍可浏览、写作和编辑自己的内容，配额与访客一致；确认后取得普通账号配额。找回只向已经验证的邮箱尝试发信，响应不透露邮箱是否注册。旧用户名账号可在“邮箱与账号”中用当前密码申请绑定；新邮箱确认之前保留原邮箱。邮箱不会在个人资料中公开显示。
+
+发信在表单和 CSRF 检查后限速：同邮箱 60 秒冷却、同 IP 每小时 20 次请求，键以 HMAC 保存于 SQLite，不保存邮箱或 IP 明文。普通认证限流仍适用。`outbox` 仅在显式 `TESTING=True` 的隔离测试生效，不能作为生产发信配置。
+
+官方资料：[Brevo 免费计划](https://help.brevo.com/hc/en-us/articles/208589409-About-Brevo-s-pricing-plans)、[发件人认证](https://help.brevo.com/hc/en-us/articles/208836149-Create-a-new-sender-From-name-and-From-email)、[域名与发件地址改写](https://help.brevo.com/hc/en-us/articles/14925263522578-Comply-with-Gmail-Yahoo-and-Microsoft-s-requirements-for-email-senders)、[PythonAnywhere 白名单](https://www.pythonanywhere.com/whitelist/)、[Resend 测试域名限制](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain)。
+
 **[线上站点](https://liss.pythonanywhere.com/)** · **[GitHub](https://github.com/heroliss/liss-web)**。2026-10-24 已在 PythonAnywhere 免费 Web app / Manual / Python 3.13 上线原持久访客版本，完成 HTTPS、真实发文、预览、评论与 Reload 保留检查。本次账号 / 界面升级正在本地联调，不将本地结果冒称已发布。
 
 ## 访客与账号

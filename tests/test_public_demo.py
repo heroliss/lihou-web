@@ -115,8 +115,7 @@ class PublicDemoTests(unittest.TestCase):
 
     def test_account_admin_and_api_routes_reject_real_requests(self):
         self.start()
-        blocked = ['/auth/change-password', '/auth/change-email', '/auth/reset',
-                   '/auth/reset/anything', '/auth/confirm', '/edit-profile/1', '/moderate',
+        blocked = ['/auth/change-password', '/edit-profile/1', '/moderate',
                    '/moderate/disable/1', '/moderate/enable/1', '/api/v1.0/posts/']
         for path in blocked:
             with self.subTest(path=path):
@@ -125,6 +124,12 @@ class PublicDemoTests(unittest.TestCase):
         self.assertEqual(self.client.put('/api/v1.0/posts/1', json={'body': 'blocked'}).status_code, 403)
         self.assertEqual(self.client.get('/auth/login').status_code, 200)
         self.assertEqual(self.client.get('/auth/register').status_code, 200)
+        self.assertEqual(self.client.get('/auth/reset').status_code, 200)
+        self.assertEqual(self.client.get('/auth/change-email').status_code, 302)
+        self.assertEqual(self.client.get('/auth/reset/anything').status_code, 302)
+        self.assertEqual(self.client.get('/auth/confirm').status_code, 405)
+        for path in ['/auth/change-email', '/auth/reset', '/auth/reset/anything', '/auth/confirm']:
+            self.assertEqual(self.client.post(path, data={'email': 'reader@example.com'}).status_code, 400)
         self.assertEqual(self.client.post('/auth/login', data={'username': 'demo',
                                                              'password': 'local-demo-only'}).status_code, 400)
 
@@ -462,8 +467,12 @@ class PublicDemoTests(unittest.TestCase):
             user.username = 'guest_account'  # Prefixes do not determine capabilities.
             db.session.commit()
         self.assertEqual(self.submit('/', {'body': 'Persisted kind controls access'}).status_code, 302)
-        for path in ['/api/v1.0/posts/', '/moderate', '/edit-profile/1', '/auth/reset', '/auth/change-email']:
+        for path in ['/api/v1.0/posts/', '/moderate', '/edit-profile/1']:
             self.assertEqual(self.client.get(path).status_code, 403)
+        for path in ['/auth/reset', '/auth/change-email']:
+            page = self.client.get(path)
+            self.assertEqual(page.status_code, 200)
+            self.assertIn('尚未开通' if path == '/auth/reset' else '暂未开通', page.get_data(as_text=True))
 
     def test_legacy_schema_upgrade_preserves_old_cookie_ids_and_custom_content(self):
         uid = self.start()
