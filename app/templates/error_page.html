@@ -1,10 +1,4 @@
 {% extends "base.html" %}
-
-{% block title %}Flasky - {{ code }}: {{ name }}{% endblock %}
-
-{% block page_content %}
-<div class="page-header">
-    <h1>{{ code }}: {{ name }}</h1>
-    <p>{{ description }}</p>
-</div>
-{% endblock %}
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}{{ code }} · {{ name }}{% endblock %}
+{% block page_content %}<section class="status-page"><p class="status-code">{{ code }}</p><h1>{{ name }}</h1><p>{{ description }}</p><a class="button button-secondary" href="{{ url_for('main.index') }}">{{ ui.icon('back') }}返回文章列表</a></section>{% endblock %}

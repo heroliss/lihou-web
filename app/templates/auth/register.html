@@ -1,13 +1,7 @@
 {% extends "base.html" %}
-{% import "bootstrap/wtf.html" as wtf %}
-
-{% block title %}{{super()}}注册{% endblock %}
-
+{% import "_forms.html" as forms %}
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}创建账号{% endblock %}
 {% block page_content %}
-<div class="page-header">
-    <h1>注册</h1>
-</div>
-<div class="col-md-4">
-    {{ wtf.quick_form(form) }}
-</div>
+<section class="auth-layout"><div class="auth-intro"><h1>{{ '把这个身份留下来。' if upgrading_guest|default(false) else '给想法一个落脚点。' }}</h1><p>{{ '现有文章、评论和关注关系都会保留。设置账号后，就能在其他设备继续使用。' if upgrading_guest|default(false) else '一个自己的名字，一处记录与交流的地方。' }}</p><a class="quiet-link" href="{{ url_for('main.index') }}">{{ ui.icon('back') }}返回文章列表</a></div><div class="auth-panel"><h2>{{ '设置账号与密码' if upgrading_guest|default(false) else '创建账号' }}</h2>{{ forms.render_form(form, '创建账号并保留内容' if upgrading_guest|default(false) else '创建账号', '', {'nickname':'显示名称（可选）'}) }}{% if config.get('PUBLIC_DEMO') %}<p class="field-help">请妥善保存账号和密码。显示名称可以之后修改。</p>{% endif %}<p class="auth-switch">已有账号？<a href="{{ url_for('auth.login') }}">登录</a></p></div></section>
 {% endblock %}

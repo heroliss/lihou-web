@@ -13,6 +13,7 @@ if not commands or commands[0] not in {'prepare-public-demo', 'backup-public-dem
     parser.error('Choose prepare-public-demo, backup-public-demo or restore-public-demo.')
 settings = json.loads(options.settings.read_text(encoding='utf-8'))
 os.environ.update(FLASK_CONFIG='public-demo', SECRET_KEY=settings['SECRET_KEY'],
+                  LISS_DATA_DIR=str(options.data_dir.expanduser().resolve()),
                   LIHOU_DEMO_DIR=str(options.data_dir.expanduser().resolve()))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from manage import app  # noqa: E402

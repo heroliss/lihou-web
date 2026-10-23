@@ -1,29 +1,9 @@
 {% extends "base.html" %}
 {% import "_macros.html" as macros %}
-
-{% block title %}{{super()}}{{ title }} {{ user.username }}{% endblock %}
-
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}{{ ui.author_name(user) }}的关注关系{% endblock %}
 {% block page_content %}
-<div class="page-header">
-    <h1>{{ user.username }}的{{ title }} </h1>
-</div>
-<table class="table table-hover followers">
-    <thead><tr><th>用户名</th><th>日期</th></tr></thead>
-    {% for follow in follows %}
-    {% if follow.user != user %}
-    <tr>
-        <td>
-            <a href="{{ url_for('.user', username = follow.user.username) }}">
-                <img class="img-rounded" src="{{ follow.user.gravatar(size=32) }}">
-                {{ follow.user.username }}
-            </a>
-        </td>
-        <td>{{ moment(follow.timestamp).format('YYYY年M月D日a') }}</td>
-    </tr>
-    {% endif %}
-    {% endfor %}
-</table>
-<div class="pagination">
-    {{ macros.pagination_widget(pagination, endpoint, username = user.username) }}
-</div>
+<div class="profile-column"><a class="back-link" href="{{ url_for('main.user', username=user.username) }}">{{ ui.icon('back') }}{{ ui.author_name(user) }}的主页</a><header class="page-heading"><h1>{{ '正在关注' if endpoint == '.followed_by' else '关注者' }}</h1><p>{{ ui.author_name(user) }}的{{ '阅读与交流' if endpoint == '.followed_by' else '同行者' }}。</p></header>
+<ul class="people-list">{% for follow in follows if follow.user != user %}<li><a class="person-link" href="{{ url_for('main.user', username=follow.user.username) }}">{{ ui.avatar(follow.user) }}<span><strong>{{ ui.author_name(follow.user) }}</strong><small>{{ follow.user.about_me or '在这里分享想法。' }}</small></span>{{ ui.identity_badge(follow.user) }}</a><span class="person-since">{{ moment(follow.timestamp).format('YYYY年M月D日') }}</span></li>{% else %}<li class="empty-state"><p>还没有关注关系。读到喜欢的文章时，可以到作者主页关注对方。</p></li>{% endfor %}</ul>
+{% if pagination %}{{ macros.pagination_widget(pagination, endpoint, username=user.username) }}{% endif %}</div>
 {% endblock %}

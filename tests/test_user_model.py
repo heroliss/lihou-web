@@ -22,6 +22,16 @@ class UserModelTestCase(unittest.TestCase):
         u = User(password='cat')
         self.assertTrue(u.password_hash is not None)
 
+    def test_missing_email_and_admin_setting_do_not_grant_admin(self):
+        self.app.config['FLASKY_ADMIN'] = None
+        user = User(username='no-email', password='a-password')
+        db.session.add(user)
+        db.session.commit()
+        self.assertIsNone(user.email)
+        self.assertTrue(user.is_registered)
+        self.assertFalse(user.is_administrator())
+        self.assertTrue(user.can(Permission.WRITE_ARTICLES))
+
     def test_no_password_getter(self):
         u = User(password='cat')
         with self.assertRaises(AttributeError):

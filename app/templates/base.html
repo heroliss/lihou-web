@@ -1,81 +1,52 @@
 {% extends "bootstrap/base.html" %}
-
-{% block title %}LIHOU - {% endblock %}
-
+{% import "_ui.html" as ui with context %}
+{% block html_attribs %} lang="zh-CN" data-theme="dark"{% endblock %}
+{% block title %}LISS · {% endblock %}
 {% block head %}
 {{ super() }}
-<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+<meta name="theme-color" content="#0e151e" id="theme-color">
+<meta name="description" content="LISS，一个写作与交流的小地方。记录想法，分享发现，让对话继续。">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
-<meta name="baidu-site-verification" content="n3ZieyAkPu" />
+<script>try{var t=localStorage.getItem('liss-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-2">
 {% endblock %}
-
 {% block navbar %}
-<div class="navbar navbar-inverse" role="navigation">
-    <div class="container">
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                <span class="sr-only"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <a class="navbar-brand" href="{{ url_for('main.index') }}">LIHOU个人网站</a>
-        </div>
-        <div class="navbar-collapse collapse">
-            <ul class="nav navbar-nav">
-                <li><a href="{{ url_for('main.index') }}">主页</a></li>
-                {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('main.user', username=current_user.username) }}">我的信息</a></li>
-                {% endif %}
-            </ul>
-            <ul class="nav navbar-nav navbar-right">
-                {% if current_user.can(Permission.MODERATE_COMMENTS) %}
-                <li><a href="{{ url_for('main.moderate') }}">管理评论</a></li>
-                {% endif %}
-                {% if current_user.is_authenticated %}
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                        <img width="18" height="18" alt="" src="{{ current_user.gravatar(size=18) }}">
-                        {% if current_user.is_authenticated %}{{current_user.username}}
-                        {% else %}账户{% endif %} <b class="caret"></b>
-                    </a>
-                    <ul class="dropdown-menu">
-                        {% if not config.get('PUBLIC_DEMO') %}
-                        <li><a href="{{ url_for('auth.change_password') }}">修改密码</a></li>
-                        <li><a href="{{ url_for('auth.change_email_request') }}">修改Email</a></li>
-                        {% endif %}
-                        <li><a href="{{ url_for('auth.logout') }}">登出</a></li>
-                    </ul>
-                </li>
-                {% else %}
-                <li><a href="{{ url_for('auth.login') }}">{{ '进入演示' if config.get('PUBLIC_DEMO') else '登录' }}</a></li>
-                {% endif %}
-            </ul>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block content %}
-<div class="container">
-    {% if config.get('PUBLIC_DEMO') %}
-    <div class="alert alert-info">在线展示 · 文章、评论与访客资料会长期保留并公开显示。每个浏览器使用独立访客身份，请勿填写真实信息。</div>
-    {% elif config.get('DEMO_MODE') %}
-    <div class="alert alert-info">本地演示 · 示例用户与文章，仅用于展示原项目功能；不是找回的历史网站数据。</div>
+<a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><nav class="site-nav page-shell" aria-label="主导航">
+  <a class="wordmark" href="{{ url_for('main.index') }}" aria-label="LISS 首页">LISS<span class="brand-dot" aria-hidden="true"></span></a>
+  <a class="nav-feed{% if request.endpoint in ['main.index','main.show_all','main.show_followed'] %} is-active{% endif %}" href="{{ url_for('main.index') }}">文章</a>
+  <div class="nav-actions">
+    <button class="icon-button theme-toggle" type="button" data-theme-toggle aria-label="切换为浅色主题" title="切换主题">{{ ui.icon('sun', 'theme-sun') }}{{ ui.icon('moon', 'theme-moon') }}</button>
+    {% if current_user.is_authenticated %}
+    <a class="button button-small nav-write" href="{{ url_for('main.index') }}#write" aria-label="写文章">{{ ui.icon('edit') }}<span>写文章</span></a>
+    <details class="account-menu"><summary aria-label="账户菜单">{{ ui.avatar(current_user, 'avatar-small') }}<span class="account-name">{{ ui.author_name(current_user) }}</span>{{ ui.icon('chevron') }}</summary>
+      <div class="account-dropdown"><p>{{ ui.author_name(current_user) }} {{ ui.identity_badge(current_user) }}</p>
+        <a href="{{ url_for('main.user', username=current_user.username) }}">{{ ui.icon('user') }}我的主页</a>
+        <a href="{{ url_for('main.edit_profile') }}">{{ ui.icon('settings') }}编辑资料</a>
+        {% if current_user.is_visitor|default(false) %}<a href="{{ url_for('auth.register') }}">{{ ui.icon('lock') }}保留为正式账号</a>
+        {% else %}<a href="{{ url_for('auth.change_password') }}">{{ ui.icon('lock') }}修改密码</a>{% endif %}
+        {% if not config.get('PUBLIC_DEMO') %}<a href="{{ url_for('auth.change_email_request') }}">修改邮箱</a>{% endif %}
+        {% if current_user.can(Permission.MODERATE_COMMENTS) %}<a href="{{ url_for('main.moderate') }}">管理评论</a>{% endif %}
+        {% if config.get('PUBLIC_DEMO') %}<form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">退出当前身份</button></form>{% if current_user.is_visitor|default(false) %}<p class="logout-note">内容仍会保留。退出前，建议先设置账号。</p>{% endif %}{% else %}<a href="{{ url_for('auth.logout') }}">退出当前身份</a>{% endif %}
+      </div>
+    </details>
+    {% else %}
+    <a class="nav-login" href="{{ url_for('auth.login') }}">登录</a>
+    <a class="button button-small" href="{{ url_for('public_demo.entry') if config.get('PUBLIC_DEMO') else url_for('auth.register') }}">开始写作</a>
     {% endif %}
-    {% for message in get_flashed_messages() %}
-    <div class="alert alert-warning">
-        <button type="button" class="close" data-dismiss="alert">&times;</button>
-        {{ message }}
-    </div>
-    {% endfor %}
-    {% block page_content %}{% endblock %}
-</div>
+  </div>
+</nav></header>
 {% endblock %}
-
+{% block content %}
+<main class="page-shell site-main" id="main-content" tabindex="-1">
+  {% for message in get_flashed_messages() %}<div class="site-flash" role="status"><span>{{ message }}</span><button class="icon-button" type="button" data-dismiss-message aria-label="关闭提示">{{ ui.icon('close') }}</button></div>{% endfor %}
+  {% block page_content %}{% endblock %}
+</main>
+<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>by Liss</span></a><p>记录想法，分享发现，让对话继续。</p><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
+{% endblock %}
 {% block scripts %}
 {{ super() }}
 {{ moment.include_moment() }}
 {{ moment.locale("zh-cn") }}
+<script src="{{ url_for('static', filename='liss.js') }}?v=20261024-2" defer></script>
 {% endblock %}

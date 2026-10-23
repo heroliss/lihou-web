@@ -2,6 +2,8 @@ from flask import render_template, redirect, url_for, abort, flash, request, \
     current_app, make_response
 from flask_login import login_required, current_user
 from flask_sqlalchemy.record_queries import get_recorded_queries
+from flask_wtf.csrf import validate_csrf
+from wtforms.validators import ValidationError
 from . import main
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm, \
     CommentForm
@@ -164,6 +166,11 @@ def edit(id):
 @login_required
 @permission_required(Permission.FOLLOW)
 def follow(username):
+    if request.method == 'POST' and current_app.config.get('WTF_CSRF_ENABLED', True):
+        try:
+            validate_csrf(request.form.get('csrf_token'))
+        except ValidationError:
+            abort(400)
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('无此用户！')
@@ -181,6 +188,11 @@ def follow(username):
 @login_required
 @permission_required(Permission.FOLLOW)
 def unfollow(username):
+    if request.method == 'POST' and current_app.config.get('WTF_CSRF_ENABLED', True):
+        try:
+            validate_csrf(request.form.get('csrf_token'))
+        except ValidationError:
+            abort(400)
     user = User.query.filter_by(username=username).first()
     if user is None:
         flash('无此用户！')

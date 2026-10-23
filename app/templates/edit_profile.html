@@ -1,13 +1,9 @@
 {% extends "base.html" %}
-{% import "bootstrap/wtf.html" as wtf %}
-
-{% block title %}{{super()}}编辑资料{% endblock %}
-
+{% import "_forms.html" as forms %}
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}编辑资料{% endblock %}
 {% block page_content %}
-<div class="page-header">
-    <h1>编辑资料</h1>
-</div>
-<div class="col-md-4">
-    {{ wtf.quick_form(form) }}
-</div>
+<div class="settings-column"><a class="back-link" href="{{ url_for('main.user', username=(user.username if user is defined else current_user.username)) }}">{{ ui.icon('back') }}返回个人主页</a><header class="page-heading"><h1>让大家认识你</h1><p>显示名称和简介会出现在你的公开主页。</p></header>
+{{ forms.render_form(form, '保存资料', '', {'name':'显示名称','location':'所在地区（可留空）','about_me':'个人简介'}) }}
+{% if current_user.is_visitor|default(false) %}<p class="settings-note">访客身份由当前浏览器保存。<a href="{{ url_for('auth.register') }}">设置账号与密码</a>后，可以跨设备继续使用，也能保留现有内容。</p>{% elif not config.get('PUBLIC_DEMO') %}<p class="settings-note"><a href="{{ url_for('auth.change_avatar') }}">更改头像</a></p>{% endif %}</div>
 {% endblock %}

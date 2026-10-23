@@ -1,7 +1,4 @@
-{% extends 'base.html' %}
-{% block title %}{{ super() }}演示提示{% endblock %}
-{% block page_content %}
-<div class="page-header"><h1>演示提示</h1></div>
-<p class="lead">{{ message }}</p>
-<p><a href="{{ url_for('main.index') }}">返回文章列表</a></p>
-{% endblock %}
+{% extends "base.html" %}
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}操作提示{% endblock %}
+{% block page_content %}<section class="status-page"><div class="status-symbol">{{ ui.icon('book') }}</div><h1>稍等一下</h1><p>{{ message }}</p><a class="button button-secondary" href="{{ url_for('main.index') }}">返回文章列表</a></section>{% endblock %}

@@ -1,9 +1,4 @@
 {% extends "base.html" %}
-
-{% block title %}{{super()}}没有找到该页面{% endblock %}
-
-{% block page_content %}
-<div class="page-header">
-    <h1>没有找到该页面</h1>
-</div>
-{% endblock %}
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}404{% endblock %}
+{% block page_content %}<section class="status-page"><p class="status-code">404</p><h1>这篇内容还没找到</h1><p>链接可能有误，或内容已经不在这里。回到文章列表，看看其他分享。</p><a class="button button-secondary" href="{{ url_for('main.index') }}">{{ ui.icon('back') }}返回文章列表</a></section>{% endblock %}

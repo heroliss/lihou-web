@@ -1,13 +1,4 @@
 {% extends "base.html" %}
-{% import "bootstrap/wtf.html" as wtf %}
-
-{% block title %}{{super()}}更改注册邮箱{% endblock %}
-
-{% block page_content %}
-<div class="page-header">
-    <h1>更改邮箱</h1>
-</div>
-<div class="col-md-4">
-    {{ wtf.quick_form(form) }}
-</div>
-{% endblock %}
+{% import "_forms.html" as forms %}
+{% block title %}{{ super() }}更改邮箱{% endblock %}
+{% block page_content %}<div class="settings-column"><header class="page-heading"><h1>更改邮箱</h1><p>新的邮箱需要完成验证后才能生效。</p></header>{{ forms.render_form(form, '更新邮箱') }}</div>{% endblock %}

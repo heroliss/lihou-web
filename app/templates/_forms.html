@@ -1,0 +1,21 @@
+{% macro render_form(form, submit_label=none, class_name='', labels={}) %}
+<form method="post" class="site-form {{ class_name }}" novalidate>
+  {{ form.hidden_tag() }}
+  {% for field in form if field.type not in ['CSRFTokenField','HiddenField'] %}
+    {% if field.type == 'SubmitField' %}<div class="form-actions">{{ field(class_='button', value=submit_label or field.label.text) }}<span class="form-pending" role="status" aria-live="polite"></span></div>
+    {% elif field.type == 'BooleanField' %}<div class="form-group form-checkbox">{{ field() }}{{ field.label }}{% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}</div>
+    {% elif field.type == 'PageDownField' %}<div class="form-group writing-field{% if field.errors %} has-error{% endif %}"><label for="flask-pagedown-{{ field.name }}">{{ labels.get(field.name, '正文') }}<span>支持 Markdown</span></label><div class="writing-workspace">{{ field(class_='form-control', placeholder='写下你的想法、发现，或一个值得分享的故事。', rows=12, **{'aria-describedby':field.id ~ '-help'}) }}</div><p class="field-help" id="{{ field.id }}-help">在预览区查看排版效果。文章发布后公开可见，仍可继续编辑。</p>{% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}</div>
+    {% else %}<div class="form-group{% if field.errors %} has-error{% endif %}"><label for="{{ field.id }}">{{ labels.get(field.name, field.label.text) }}{% if field.flags.required %}<span class="required-mark" aria-label="必填">*</span>{% endif %}</label>
+      {% if field.type == 'PasswordField' %}{{ field(class_='form-control', autocomplete='current-password' if field.name in ['old_password'] or (request.endpoint == 'auth.login') else 'new-password', **{'aria-invalid':'true' if field.errors else 'false'}) }}
+      {% elif field.name == 'username' %}{{ field(class_='form-control', autocomplete='username', spellcheck='false', **{'aria-invalid':'true' if field.errors else 'false'}) }}
+      {% elif field.name == 'email' %}{{ field(class_='form-control', type='email', autocomplete='email', **{'aria-invalid':'true' if field.errors else 'false'}) }}
+      {% elif field.name == 'body' and request.endpoint == 'main.post' %}<textarea class="form-control" id="{{ field.id }}" name="{{ field.name }}" rows="3" placeholder="分享你的看法，或向作者提个问题。" aria-invalid="{{ 'true' if field.errors else 'false' }}">{{ field.data or '' }}</textarea>
+      {% elif field.type == 'TextAreaField' %}{{ field(class_='form-control', rows=4, **{'aria-invalid':'true' if field.errors else 'false'}) }}
+      {% else %}{{ field(class_='form-control', **{'aria-invalid':'true' if field.errors else 'false'}) }}{% endif %}
+      {% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}
+      {% if field.description %}<p class="field-help">{{ field.description }}</p>{% endif %}
+    </div>{% endif %}
+  {% endfor %}
+  {% if form.csrf_token is defined %}{% for error in form.csrf_token.errors %}<p class="field-error" role="alert">{{ error }} 请刷新页面后重试。</p>{% endfor %}{% endif %}
+</form>
+{% endmacro %}

@@ -1,17 +1,4 @@
 {% extends "base.html" %}
 {% import "_macros.html" as macros %}
-
-{% block title %}{{super()}}评论管理{% endblock %}
-
-{% block page_content %}
-<div class="page-header">
-    <h1>评论管理</h1>
-</div>
-{% set moderate = True %}
-{% include '_comments.html' %}
-{% if pagination %}
-<div class="pagination">
-    {{ macros.pagination_widget(pagination, '.moderate') }}
-</div>
-{% endif %}
-{% endblock %}
+{% block title %}{{ super() }}管理评论{% endblock %}
+{% block page_content %}<div class="reading-column"><header class="page-heading"><h1>管理评论</h1><p>维护友善、清晰的讨论空间。</p></header>{% set moderate = True %}{% include '_comments.html' %}{% if pagination %}{{ macros.pagination_widget(pagination, 'main.moderate') }}{% endif %}</div>{% endblock %}

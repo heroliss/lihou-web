@@ -1,35 +1,4 @@
-<ul class="comments">
-    {% for comment in comments %}
-    <li class="comment">
-        <div class="comment-thumbnail">
-            <a href="{{ url_for('.user', username=comment.author.username) }}">
-                <img class="img-rounded profile-thumbnail" width="40" height="40" alt="{{ comment.author.username }}" src="{{ comment.author.gravatar(size=40) }}">
-            </a>
-        </div>
-        <div class="comment-content">
-            <div class="comment-date">{{ moment(comment.timestamp).fromNow() }}</div>
-            <div class="comment-author"><a href="{{ url_for('.user', username=comment.author.username) }}">{{ comment.author.username }}</a></div>
-            <div class="comment-body">
-                {% if comment.disabled %}
-                <p><i>这个评论已被禁止显示</i></p>
-                {% endif %}
-                {% if moderate or not comment.disabled %}
-                    {% if comment.body_html %}
-                        {{ comment.body_html | safe }}
-                    {% else %}
-                        {{ comment.body }}
-                    {% endif %}
-                {% endif %}
-            </div>
-            {% if moderate %}
-                <br>
-                {% if comment.disabled %}
-                <a class="btn btn-default btn-xs" href="{{ url_for('.moderate_enable', id=comment.id, page=page) }}">允许</a>
-                {% else %}
-                <a class="btn btn-danger btn-xs" href="{{ url_for('.moderate_disable', id=comment.id, page=page) }}">禁止</a>
-                {% endif %}
-            {% endif %}
-        </div>
-    </li>
-    {% endfor %}
-</ul>
+{% import "_ui.html" as ui with context %}
+<ol class="comments">
+{% for comment in comments %}<li class="comment" id="comment-{{ comment.id }}"><a class="author-avatar" href="{{ url_for('main.user', username=comment.author.username) }}" aria-label="{{ ui.author_name(comment.author) }}的主页">{{ ui.avatar(comment.author, 'avatar-small') }}</a><div class="comment-content"><header class="comment-meta"><a class="comment-author" href="{{ url_for('main.user', username=comment.author.username) }}">{{ ui.author_name(comment.author) }}</a>{{ ui.identity_badge(comment.author) }}<span class="comment-date">{{ moment(comment.timestamp).fromNow() }}</span></header><div class="comment-body reading-prose">{% if comment.disabled %}<p class="muted">这条评论已被隐藏。</p>{% endif %}{% if moderate|default(false) or not comment.disabled %}{% if comment.body_html %}{{ comment.body_html|safe }}{% else %}<p class="plain-text">{{ comment.body }}</p>{% endif %}{% endif %}</div>{% if moderate|default(false) %}<a class="button button-small button-secondary" href="{{ url_for('main.moderate_enable' if comment.disabled else 'main.moderate_disable', id=comment.id, page=page) }}">{{ '恢复显示' if comment.disabled else '隐藏评论' }}</a>{% endif %}</div></li>{% endfor %}
+</ol>

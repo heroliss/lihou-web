@@ -1,29 +1,7 @@
 {% macro pagination_widget(pagination, endpoint, fragment='') %}
-<ul class="pagination">
-    <li {% if not pagination.has_prev %} class="disabled"{% endif %}>
-        <a href="{% if pagination.has_prev %}{{ url_for(endpoint, page=pagination.prev_num, **kwargs) }}{{ fragment }}{% else %}###{% endif %}">
-            &laquo;
-        </a>
-    </li>
-    {% for p in pagination.iter_pages() %}
-        {% if p %}
-            {% if p == pagination.page %}
-            <li class="active">
-                <a href="{{ url_for(endpoint, page = p, **kwargs) }}{{ fragment }}">{{ p }}</a>
-            </li>
-            {% else %}
-            <li>
-                <a href="{{ url_for(endpoint, page = p, **kwargs) }}{{ fragment }}">{{ p }}</a>
-            </li>
-            {% endif %}
-        {% else %}
-        <li class="disabled"><a href="###">&hellip;</a></li>
-        {% endif %}
-    {% endfor %}
-    <li {% if not pagination.has_next %} class="disabled"{% endif %}>
-        <a href="{% if pagination.has_next %}{{ url_for(endpoint, page=pagination.next_num, **kwargs) }}{{ fragment }}{% else %}###{% endif %}">
-            &raquo;
-        </a>
-    </li>
-</ul>
+{% if pagination.pages > 1 %}<nav class="pagination-nav" aria-label="分页"><ul class="pagination">
+{% if pagination.has_prev %}<li><a href="{{ url_for(endpoint, page=pagination.prev_num, **kwargs) }}{{ fragment }}" rel="prev" aria-label="上一页">上一页</a></li>{% endif %}
+{% for p in pagination.iter_pages() %}{% if p %}<li{% if p == pagination.page %} class="active"{% endif %}>{% if p == pagination.page %}<span aria-current="page" aria-label="第 {{ p }} 页，当前页">{{ p }}</span>{% else %}<a href="{{ url_for(endpoint, page=p, **kwargs) }}{{ fragment }}" aria-label="第 {{ p }} 页">{{ p }}</a>{% endif %}</li>{% else %}<li class="pagination-gap"><span aria-hidden="true">…</span></li>{% endif %}{% endfor %}
+{% if pagination.has_next %}<li><a href="{{ url_for(endpoint, page=pagination.next_num, **kwargs) }}{{ fragment }}" rel="next" aria-label="下一页">下一页</a></li>{% endif %}
+</ul></nav>{% endif %}
 {% endmacro %}

@@ -1,62 +1,55 @@
-# lihou-web
+# LISS
 
-独立开发的 Flask 社交博客，最初于 2016 年运行在 Heroku。包含账户注册与邮件确认、登录、用户资料、角色权限、Markdown 发布与预览、评论、关注时间线、管理功能和 REST API。
+一个独立开发的 Flask 写作与交流网站。最初在 2016 年作为学习后端、前端和 Web 技术的实操项目，2026 年升级到 Python 3.13 / 3.14、Flask 3.1、SQLAlchemy 2.1，并重新设计为默认暗色、支持浅色切换的现代界面。
 
-2026 年对运行环境做了兼容升级。保留原页面样式与功能结构，支持 Python 3.13 / 3.14、Flask 3.1 与 SQLAlchemy 2.1。旧 Heroku 数据没有找回；演示内容是单独创建的示例。
+**[在线访问](https://liss.pythonanywhere.com/)** · **[源码](https://github.com/heroliss/liss-web)** · PythonAnywhere 免费托管 / HTTPS
 
-**[在线体验](https://liss.pythonanywhere.com/demo)** · PythonAnywhere 免费托管 · HTTPS
+无需注册即可用浏览器访客身份发文、编辑、评论、关注作者和完善资料。创建用户名与密码账号后，可在其他浏览器继续登录；从当前访客升级时保留同一用户 ID、全部文章、评论和关注关系。文章与身份长期存储，不会自动重置或清空。
 
-点击「进入演示」即可使用浏览器访客身份发文与评论，无需注册。保存的文章、评论和资料长期保留；清除 Cookie 或身份过期后内容仍在，但不能保证找回原身份继续编辑。
+访客身份依靠当前浏览器的 Cookie；清除 Cookie、无痕浏览或换设备后可能无法认回，但已发布内容仍保留。账号不要求邮箱，暂不提供邮件找回密码，请保存好登录信息。登录已有账号只切换身份，不自动合并当前访客内容。
 
-## 本地演示（Windows PowerShell）
+## 运行
+
+使用 Python 3.13 或 3.14。在 Windows PowerShell 中：
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt
-$env:FLASK_CONFIG = 'demo'
-.venv\Scripts\python manage.py seed-demo
+$env:FLASK_CONFIG = 'public-demo'
+$env:LISS_DATA_DIR = (Join-Path $PWD 'instance/public-demo')
+# 首次生成并安全保存一个至少32字符的随机SECRET_KEY；以后使用同一个值
+$env:SECRET_KEY = '替换为自己固定保存的随机密钥'
+$env:LIHOU_DEMO_COOKIE_SECURE = '0' # 仅限本地HTTP预览
 .venv\Scripts\python manage.py runserver --port 5000
 ```
 
-打开 http://127.0.0.1:5000 。示例账户为 `demo@example.com`，密码为 `local-demo-only`，只用于独立本地演示。
+打开 http://127.0.0.1:5000 。`public-demo` 是保留的内部配置名，产品界面使用 LISS；正式入口为 `/welcome`，旧 `/demo` 书签继续跳转。首次启动补充站点写作指南，后续启动保留原库及身份。不要更换密钥或指定新的空目录来更新网站。
 
-- demo 模式只使用 `data-demo.sqlite`，明确显示示例数据标识，并禁止发送邮件。
-- `seed-demo` 可重复执行，不清空数据；在其它配置中会拒绝运行。
-- 正常开发使用 development 配置和 `DEV_DATABASE_URL`；空数据库执行 `python manage.py deploy` 运行原迁移链并初始化角色。demo 的 seed 命令直接创建新样例结构，无需再执行 deploy。
-- macOS / Linux 使用 `.venv/bin/python`，设置环境变量使用 `export FLASK_CONFIG=demo`。
-- 可通过 `flask --app manage:app` 使用 Flask 原生命令；原 `manage.py runserver` 保留为本地开发别名。
+PythonAnywhere 的 WSGI、现有存储升级、固定密钥、SQLite 一致备份与恢复见 **[部署与维护指南](docs/public-demo.md)**。已有部署的数据目录、私有配置与 Cookie 名保留兼容，仓库改名不会重置身份。公网使用 HTTPS 与正式 WSGI，继续保留 1 个 worker。
+
+## 身份与边界
+
+访客与注册账号都可发布、编辑自己的文章、评论、关注与维护资料。注册账号拥有更宽的写入配额并支持改密，访客无需邮箱或共享密码。两种身份都不能覆盖其他作者的内容；公共管理和 REST API 路由未开放。所有公共写入口保留 CSRF 与适度限速，容量到限仅暂停新增或写入，不删除已有数据。
+
+新版本在原 SQLite 中增加身份类型；迁移前自动生成一致备份，保留用户 ID、旧 Cookie 身份代次和关系。固定初始文章只有精确匹配未修改的旧种子内容时才更新为正式欢迎 / 写作说明，并先备份；用户内容不会被改写。旧 Heroku 数据没有找回，这次站点使用重新上线后积累的数据。
 
 ## 验证
 
 ```powershell
 .venv\Scripts\python -m pip install -r requirements/dev.txt
-.venv\Scripts\python manage.py test
+.venv\Scripts\python -m unittest discover -s tests -v
 ```
 
-Windows / Python 3.13.13 与 3.14 各运行 59 项测试，58 项通过，1 项历史 Selenium 测试默认跳过；其中 21 项验证访客真实路由、CSRF、隔离、容量、长期保留与一致备份 / 恢复。另完成本地 HTTP 发布、Markdown、资料、评论和越权边界检查，以及固定密钥下的真实进程重启验收。原全新 SQLite 的 11 个迁移步骤已运行至 `20261023_hash`，在线展示使用独立建表与缺失示例补充。
+回归覆盖模型、权限、真实表单路由、CSRF、访客隔离、账号注册 / 登录、同 ID 访客升级、旧 SQLite 与旧 Cookie 兼容、跨重启、配额、内容保留，以及包含已提交 WAL 的 SQLite backup API 备份与显式恢复。历史 Selenium 脚本默认跳过，实际浏览器交互另行验收。
 
-PythonAnywhere / Python 3.13 已完成公网真实发文、Markdown 实时预览、评论与 Web Reload 后的同一身份 / 编辑权限 / 内容保留检查。平台强制 HTTPS 已启用，SQLite backup API 的初始与验收后快照已生成；Docker 镜像仍未实测。
+PythonAnywhere / Python 3.13 的原访客版本已完成公网发文、Markdown 实时预览、评论与 Web Reload 后身份 / 内容保留验收；本次账号与界面升级先本地联调再更新线上。Docker 镜像仍未实测，真实 SMTP 与生产 PostgreSQL 不在这次验收范围内。
 
-历史 Selenium 脚本属于旧版浏览器自动化资料，默认不启动浏览器；当前交互验收单独记录。现代 Flask / Python 依赖经过安装兼容检查，精确环境快照见 `requirements/verified-python314.txt`。
+## 技术与兼容
 
-## 公开在线演示
+- Flask Blueprint、Jinja、SQLAlchemy、Flask-Login / WTF、Markdown + Bleach、REST API 与角色权限，前端支持实时预览和深浅主题。
+- Flask-Script 已迁移至 Flask / Click CLI，适配现代分页、查询记录、WTForms、Faker 与 Bleach CSSSanitizer。
+- 使用带时效签名令牌，现代 Werkzeug 密码散列字段扩为 256 字符；保留历史密码验证和 naive UTC 数据约定。
+- 访客和账号类型持久化，公开站无 SMTP 依赖，旧邮件注册机制保留在普通开发 / 生产模式。
+- `app/` 为应用与接口，`migrations/` 为原迁移链与新版增量，`tests/` 为回归测试，`manage.py` / `deploy/` 为管理和部署入口。
 
-独立 `public-demo` 模式现为持久化在线展示：每个浏览器使用独立访客身份，可真实体验 Markdown 发布、评论、资料与关注；保存的文章、评论和访客数据长期保留，不因时间或 Cookie 过期自动删除。固定示例和其他访客的文章不可覆盖。保留表单保护、限额和限速，不开放注册、改密、管理与 API，不复用本地示例密码。
-
-已在 PythonAnywhere 的 Python 3.13 免费 Web app 上线，使用独立持久目录与固定私有密钥。30 天滚动 Cookie 可跨 Web Reload 识别，容量达到上限只停止新增，不清空数据。WSGI 样例、SQLite 一致备份 / 显式恢复和持久卷 Docker 配置见 **[在线展示指南](docs/public-demo.md)**。不使用无法长期保留 SQLite 的 Render 免费配置。
-
-## 兼容升级
-
-- Flask-Script 改为 Flask / Click CLI，Werkzeug 中间件使用现代入口；分页与查询记录适配 Flask-SQLAlchemy 3。
-- 使用现代 itsdangerous 的带过期时间签名令牌，旧 JWT 令牌不再兼容，需要重新申请确认或重置链接。
-- 表单操作显式提交数据库事务，防止请求结束后回滚；拒绝匿名发评论与站外登录重定向。
-- 适配 Bleach CSSSanitizer、WTForms DataRequired、Faker，修复假评论生成器未保存 Comment 的问题。
-- 密码散列字段扩为 256 字符以容纳现代 Werkzeug 格式，保留旧密码验证能力。
-- 保留历史 naive UTC 数据约定，并用现代 UTC 时钟生成时间；修正头像显示尺寸与 Markdown 代码块渲染。
-- 移除早期百度主动推送脚本，demo 使用本地图标，Bootstrap 静态资源本地提供。
-
-## 目录
-
-`app/` 是页面、模型、鉴权与 REST API；`migrations/` 保留完整迁移历史；`tests/` 是模型与 HTTP 回归；`manage.py` 是命令入口。
-
-普通生产 / Heroku 配置仍需单独设置 SECRET_KEY、数据库与邮件；公开访客展示抑制邮件，不依赖邮件服务。`requirements/heroku.txt` 提供当前 Gunicorn / psycopg 3 可选依赖，支持将 Heroku 形式的 PostgreSQL URL 转为 psycopg 3 驱动；没有重新部署到 Heroku，也没有验证生产 PostgreSQL 或真实邮件投递。
+普通开发使用 `development` + `DEV_DATABASE_URL`，空库执行 `python manage.py deploy` 升级迁移并初始化角色。独立本地开发样例可使用 `demo`、`seed-demo` 和 `demo@example.com` / `local-demo-only`；该密码不适用于公开站。生产 / Heroku 模式需自行配置数据库、固定 SECRET_KEY 与邮件；`requirements/heroku.txt` 提供 Gunicorn / psycopg 3 可选依赖。

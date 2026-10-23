@@ -50,7 +50,7 @@ class PublicDemoTests(unittest.TestCase):
 
     def start(self, client=None):
         client = client or self.client
-        response = client.post('/demo', data={'csrf_token': self.token(client, '/demo')})
+        response = client.post('/welcome', data={'csrf_token': self.token(client, '/welcome')})
         self.assertEqual(response.status_code, 302)
         with client.session_transaction() as saved:
             return int(saved['public_demo_uid'])
@@ -64,22 +64,23 @@ class PublicDemoTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'SECRET_KEY'):
                 create_app('public-demo')
 
-    def test_fresh_home_seeds_samples_and_has_no_register_link(self):
+    def test_fresh_home_has_welcome_and_optional_account_entry(self):
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn('进入演示', page)
+        self.assertIn('LISS', page)
         # An old commented-out block can contain the historical URL; only visible HTML matters.
         visible = re.sub(r'<!--.*?-->', '', page, flags=re.S)
-        self.assertNotIn('/auth/register', visible)
+        self.assertIn('/welcome', visible)
+        self.assertIn('/auth/login', visible)
         self.assertEqual(response.headers['X-Robots-Tag'], 'noindex, nofollow')
         with self.app.app_context():
             self.assertEqual(Post.query.count(), 3)
             self.assertFalse(User.query.filter_by(username='demo').first().is_administrator())
 
     def test_entry_requires_csrf_and_creates_distinct_normal_users(self):
-        self.client.get('/demo')
-        self.assertEqual(self.client.post('/demo').status_code, 400)
+        self.client.get('/welcome')
+        self.assertEqual(self.client.post('/welcome').status_code, 400)
         first = self.start()
         second = self.start(self.app.test_client())
         self.assertNotEqual(first, second)
@@ -114,7 +115,7 @@ class PublicDemoTests(unittest.TestCase):
 
     def test_account_admin_and_api_routes_reject_real_requests(self):
         self.start()
-        blocked = ['/auth/register', '/auth/change-password', '/auth/change-email', '/auth/reset',
+        blocked = ['/auth/change-password', '/auth/change-email', '/auth/reset',
                    '/auth/reset/anything', '/auth/confirm', '/edit-profile/1', '/moderate',
                    '/moderate/disable/1', '/moderate/enable/1', '/api/v1.0/posts/']
         for path in blocked:
@@ -122,9 +123,10 @@ class PublicDemoTests(unittest.TestCase):
                 self.assertEqual(self.client.get(path).status_code, 403)
                 self.assertEqual(self.client.post(path, data={'body': 'blocked'}).status_code, 403)
         self.assertEqual(self.client.put('/api/v1.0/posts/1', json={'body': 'blocked'}).status_code, 403)
-        self.assertEqual(self.client.get('/auth/login').location, '/demo')
-        self.assertEqual(self.client.post('/auth/login', data={'email': 'demo@example.com',
-                                                             'password': 'local-demo-only'}).status_code, 403)
+        self.assertEqual(self.client.get('/auth/login').status_code, 200)
+        self.assertEqual(self.client.get('/auth/register').status_code, 200)
+        self.assertEqual(self.client.post('/auth/login', data={'username': 'demo',
+                                                             'password': 'local-demo-only'}).status_code, 400)
 
     def test_follow_is_post_and_csrf_protected(self):
         uid = self.start()
@@ -143,8 +145,8 @@ class PublicDemoTests(unittest.TestCase):
         self.assertEqual(self.submit('/', {'body': 'Another article'}).status_code, 429)
         self.assertEqual(self.submit('/post/1', {'body': 'One comment'}).status_code, 302)
         self.assertEqual(self.submit('/post/1', {'body': 'Another comment'}).status_code, 429)
-        self.assertEqual(self.submit('/', {'body': 'x' * 4001}).status_code, 413)
-        self.assertEqual(self.submit('/post/1', {'body': 'x' * 1001}).status_code, 413)
+        self.assertEqual(self.submit('/', {'body': 'x' * 8001}).status_code, 413)
+        self.assertEqual(self.submit('/post/1', {'body': 'x' * 2001}).status_code, 413)
         self.assertEqual(self.submit('/edit-profile', {'about_me': 'x' * 501}).status_code, 413)
 
     def test_write_rate_limit_and_retry_after(self):
@@ -161,7 +163,7 @@ class PublicDemoTests(unittest.TestCase):
         self.app.config['PUBLIC_DEMO_MAX_VISITORS'] = 1
         self.start()
         other = self.app.test_client()
-        response = other.post('/demo', data={'csrf_token': self.token(other, '/demo')})
+        response = other.post('/welcome', data={'csrf_token': self.token(other, '/welcome')})
         self.assertEqual(response.status_code, 429)
         self.assertNotIn('重置', response.get_data(as_text=True))
         self.assertNotIn('Retry-After', response.headers)
@@ -349,8 +351,226 @@ class PublicDemoTests(unittest.TestCase):
     def test_payload_size_and_health(self):
         self.assertEqual(self.client.get('/healthz').get_json(), {'status': 'ok'})
         self.start()
-        response = self.client.post('/', data={'body': 'x' * (20 * 1024)})
+        response = self.client.post('/', data={'body': 'x' * (257 * 1024)})
         self.assertEqual(response.status_code, 413)
+
+    def register(self, username='writer_one', client=None, nickname=''):
+        return self.submit('/auth/register', {'username': username, 'password': 'Good-password-123',
+                            'password2': 'Good-password-123', 'nickname': nickname},
+                           client=client, token_path='/auth/register')
+
+    def login(self, client, username='writer_one', password='Good-password-123'):
+        return self.submit('/auth/login', {'username': username, 'password': password},
+                           client=client, token_path='/auth/login')
+
+    def test_guest_upgrade_keeps_id_content_profile_comments_and_follow_relations(self):
+        uid = self.start()
+        self.submit('/', {'body': 'Written before account upgrade'})
+        self.submit('/post/1', {'body': 'Reply before upgrade'})
+        self.submit('/edit-profile', {'name': 'Existing nickname', 'location': 'Somewhere', 'about_me': 'Keep profile'})
+        self.submit('/follow/demo')
+        with self.app.app_context():
+            before = {table: db.session.execute(db.text(f'SELECT count(*) FROM {table}')).scalar()
+                      for table in ['users', 'posts', 'comments', 'follows']}
+            post_id = Post.query.filter_by(author_id=uid).first().id
+        self.app.config['PUBLIC_DEMO_MAX_VISITORS'] = 1  # Upgrade is not a new identity.
+        with patch('app.auth.views.send_email', side_effect=AssertionError('SMTP must not be used')):
+            self.assertEqual(self.register().status_code, 302)
+        with self.client.session_transaction() as saved:
+            self.assertEqual(saved['public_demo_uid'], str(uid))
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            self.assertEqual(user.account_kind, 'account')
+            self.assertTrue(user.is_registered)
+            self.assertFalse(user.is_visitor)
+            self.assertFalse(user.is_administrator())
+            self.assertIsNone(user.email)
+            self.assertTrue(user.confirmed)
+            self.assertEqual(user.display_name, 'Existing nickname')
+            self.assertEqual(user.location, 'Somewhere')
+            self.assertEqual(user.about_me, 'Keep profile')
+            self.assertEqual(user.posts.first().id, post_id)
+            self.assertEqual(user.comments.first().body, 'Reply before upgrade')
+            self.assertTrue(user.is_following(User.query.filter_by(username='demo').first()))
+            after = {table: db.session.execute(db.text(f'SELECT count(*) FROM {table}')).scalar()
+                     for table in before}
+            self.assertEqual(before, after)
+        another = self.app.test_client()
+        self.assertEqual(self.login(another, 'WRITER_ONE').status_code, 302)
+        with another.session_transaction() as saved:
+            self.assertEqual(saved['public_demo_uid'], str(uid))
+        self.assertEqual(self.submit(f'/edit/{post_id}', {'body': 'Edited on another browser'}, client=another).status_code, 302)
+        self.assertEqual(self.submit('/edit/1', {'body': 'Cannot change guide'}, client=another).status_code, 403)
+
+    def test_public_registration_login_csrf_and_reserved_names_without_email(self):
+        self.assertEqual(self.client.post('/auth/register', data={'username': 'writer_one'}).status_code, 400)
+        with patch('app.auth.views.send_email', side_effect=AssertionError('SMTP must not be used')):
+            self.assertEqual(self.register(nickname='A writer').status_code, 302)
+        with self.app.app_context():
+            user = User.query.filter_by(username='writer_one').first()
+            self.assertEqual(user.display_name, 'A writer')
+            self.assertIsNone(user.email)
+            self.assertFalse(user.is_administrator())
+            uid = user.id
+        other = self.app.test_client()
+        for reserved in ['Writer_One', 'guest_123abc', 'demo', 'admin', 'liss']:
+            self.assertEqual(self.register(reserved, client=other).status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(User.query.count(), 2)
+        self.assertEqual(other.post('/auth/login', data={'username': 'writer_one', 'password': 'Good-password-123'}).status_code, 400)
+        self.assertEqual(self.login(other, password='Wrong-password').status_code, 200)
+        with other.session_transaction() as saved:
+            self.assertNotIn('_user_id', saved)
+        self.assertEqual(self.login(other).status_code, 302)
+        with other.session_transaction() as saved:
+            self.assertEqual(saved['_user_id'], str(uid))
+
+    def test_account_login_switch_does_not_reassign_visitor_content(self):
+        self.register()
+        visitor = self.app.test_client()
+        uid = self.start(visitor)
+        self.submit('/', {'body': 'Keep original visitor owner'}, client=visitor)
+        self.assertEqual(self.login(visitor).status_code, 302)
+        with self.app.app_context():
+            post = Post.query.filter_by(body='Keep original visitor owner').first()
+            self.assertEqual(post.author_id, uid)
+            self.assertTrue(db.session.get(User, uid).is_visitor)
+            post_id = post.id
+        self.assertEqual(self.submit(f'/edit/{post_id}', {'body': 'Cannot take visitor content'}, client=visitor).status_code, 403)
+
+    def test_account_password_change_works_and_guest_cannot_use_it(self):
+        self.start()
+        self.assertEqual(self.client.get('/auth/change-password').status_code, 403)
+        self.register()
+        self.assertEqual(self.client.post('/auth/change-password', data={'password': 'No-CSRF-password'}).status_code, 400)
+        self.assertEqual(self.submit('/auth/change-password', {
+            'old_password': 'Good-password-123', 'password': 'Changed-password-456',
+            'password2': 'Changed-password-456'}, token_path='/auth/change-password').status_code, 302)
+        other = self.app.test_client()
+        self.assertEqual(self.login(other).status_code, 200)
+        self.assertEqual(self.login(other, password='Changed-password-456').status_code, 302)
+
+    def test_guest_and_account_have_ordinary_permissions_with_different_quotas(self):
+        uid = self.start()
+        self.app.config['PUBLIC_DEMO_MAX_POSTS'] = 1
+        self.submit('/', {'body': 'First visitor post'})
+        self.assertEqual(self.submit('/', {'body': 'Visitor limit'}).status_code, 429)
+        self.register()
+        self.assertEqual(self.submit('/', {'body': 'Account can continue writing'}).status_code, 302)
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            user.username = 'guest_account'  # Prefixes do not determine capabilities.
+            db.session.commit()
+        self.assertEqual(self.submit('/', {'body': 'Persisted kind controls access'}).status_code, 302)
+        for path in ['/api/v1.0/posts/', '/moderate', '/edit-profile/1', '/auth/reset', '/auth/change-email']:
+            self.assertEqual(self.client.get(path).status_code, 403)
+
+    def test_legacy_schema_upgrade_preserves_old_cookie_ids_and_custom_content(self):
+        uid = self.start()
+        self.submit('/', {'body': 'Legacy visitor content'})
+        self.submit('/post/1', {'body': 'Legacy visitor reply'})
+        self.submit('/follow/demo')
+        from app.demo_seed import LEGACY_POSTS, WELCOME_POSTS
+        database = Path(self.directory.name) / 'public-demo.sqlite'
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            user.email = 'abcdef0123456789@example.invalid'
+            db.session.get(Post, 1).body = LEGACY_POSTS[0]
+            db.session.get(Post, 2).body = 'Customized original seed body must survive'
+            db.session.commit()
+            before = {table: db.session.execute(db.text(f'SELECT count(*) FROM {table}')).scalar()
+                      for table in ['users', 'posts', 'comments', 'follows']}
+            db.session.remove()
+            db.engine.dispose()
+        with closing(sqlite3.connect(database)) as connection:
+            connection.execute('ALTER TABLE users DROP COLUMN account_kind')
+            connection.commit()
+        self.app.extensions['public_demo'].initialized = False
+        self.assertEqual(self.client.get('/').status_code, 200)
+        with self.client.session_transaction() as saved:
+            self.assertEqual(saved['_user_id'], str(uid))
+        self.assertEqual(self.submit('/', {'body': 'Old cookie can still write'}).status_code, 302)
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            self.assertTrue(user.is_visitor)
+            self.assertEqual(user.comments.first().body, 'Legacy visitor reply')
+            self.assertTrue(user.is_following(User.query.filter_by(username='demo').first()))
+            self.assertEqual(db.session.get(Post, 1).body, WELCOME_POSTS[0])
+            self.assertEqual(db.session.get(Post, 2).body, 'Customized original seed body must survive')
+            after = {table: db.session.execute(db.text(f'SELECT count(*) FROM {table}')).scalar()
+                     for table in before}
+            self.assertEqual(after, {**before, 'posts': before['posts'] + 1})
+        snapshots = list(Path(self.directory.name).glob('before-accounts-*.sqlite'))
+        self.assertEqual(len(snapshots), 1)
+        with closing(sqlite3.connect(snapshots[0])) as connection:
+            self.assertNotIn('account_kind', {row[1] for row in connection.execute('pragma table_info(users)')})
+            self.assertEqual(connection.execute('SELECT body FROM posts WHERE id=1').fetchone()[0], LEGACY_POSTS[0])
+
+    def test_registered_identity_and_password_survive_backup_restore_and_restart(self):
+        self.start()
+        self.submit('/', {'body': 'Account backup article'})
+        self.register()
+        sandbox = self.app.extensions['public_demo']
+        snapshot = Path(self.directory.name) / 'account-backup.sqlite'
+        with self.app.app_context(), sandbox.exclusive():
+            sandbox.backup(snapshot)
+        self.submit('/', {'body': 'Later article'})
+        with self.app.app_context(), sandbox.exclusive():
+            sandbox.restore(snapshot)
+        another_app = self.create_app()
+        try:
+            other = another_app.test_client()
+            self.assertEqual(self.login(other).status_code, 302)
+            with another_app.app_context():
+                self.assertTrue(User.query.filter_by(username='writer_one').first().is_registered)
+                self.assertIsNotNone(Post.query.filter_by(body='Account backup article').first())
+                self.assertIsNone(Post.query.filter_by(body='Later article').first())
+        finally:
+            with another_app.app_context():
+                db.session.remove()
+                db.engine.dispose()
+
+    def test_legacy_entry_redirects_and_join_alias_uses_registration(self):
+        self.assertEqual(self.client.get('/demo').location, '/welcome')
+        token = self.token(path='/welcome')
+        response = self.client.post('/demo', data={'csrf_token': token})
+        self.assertEqual(response.status_code, 307)
+        self.assertEqual(response.location, '/welcome')
+        self.assertEqual(self.client.get('/join').status_code, 200)
+
+    def test_auth_rate_limit_is_separate_and_does_not_delete_accounts(self):
+        self.register()
+        self.app.config['PUBLIC_DEMO_AUTH_LIMIT'] = 1
+        other = self.app.test_client()
+        # Registration already used this IP's auth bucket; no account mutation occurs.
+        response = self.login(other)
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers['Retry-After'], '60')
+        with self.app.app_context():
+            self.assertTrue(User.query.filter_by(username='writer_one').first().is_registered)
+
+    def test_account_login_rejects_external_next_destinations(self):
+        self.register()
+        for destination in ['//outside.example', '/\\outside.example', 'https://outside.example']:
+            other = self.app.test_client()
+            token = self.token(other, '/auth/login')
+            response = other.post('/auth/login', query_string={'next': destination},
+                                  data={'csrf_token': token, 'username': 'writer_one', 'password': 'Good-password-123'})
+            self.assertEqual(response.location, '/')
+
+    def test_public_logout_requires_post_and_csrf_without_erasing_content(self):
+        uid = self.start()
+        self.submit('/', {'body': 'Saved before explicit logout'})
+        self.assertEqual(self.client.get('/auth/logout').status_code, 405)
+        self.assertEqual(self.client.post('/auth/logout').status_code, 400)
+        with self.client.session_transaction() as saved:
+            self.assertEqual(saved['_user_id'], str(uid))
+        self.assertEqual(self.submit('/auth/logout').status_code, 302)
+        with self.client.session_transaction() as saved:
+            self.assertNotIn('_user_id', saved)
+        with self.app.app_context():
+            self.assertIsNotNone(db.session.get(User, uid))
+            self.assertEqual(Post.query.filter_by(author_id=uid).count(), 1)
 
 
 if __name__ == '__main__':

@@ -32,6 +32,9 @@ def unconfirmed():
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import login
+        return login()
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
@@ -45,7 +48,7 @@ def login():
     return render_template('auth/login.html', form=form)
 
 
-@auth.route('/logout')
+@auth.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
     logout_user()
@@ -55,6 +58,9 @@ def logout():
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..public_accounts import register
+        return register()
     form = RegistrationForm()
     if form.validate_on_submit():
         user = User(email=form.email.data,

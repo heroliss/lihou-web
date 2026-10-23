@@ -1,4 +1,4 @@
-"""Persistent browser-visitor showcase. Ordinary modes remain unchanged.
+"""Persistent guest-first LISS site. Ordinary modes remain unchanged.
 
 No request, age threshold or missing marker ever clears saved content. One WSGI
 worker and a file lock coordinate writes, online snapshots and explicit restores.
@@ -14,7 +14,7 @@ import time
 from sqlalchemy import text
 
 from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, session, url_for
-from flask_login import current_user, login_user
+from flask_login import current_user
 from flask_wtf import CSRFProtect, FlaskForm
 from wtforms import SubmitField
 
@@ -26,7 +26,7 @@ demo = Blueprint('public_demo', __name__)
 
 
 class EntryForm(FlaskForm):
-    submit = SubmitField('进入演示')
+    submit = SubmitField('以访客身份加入')
 
 
 class Sandbox:
@@ -76,6 +76,8 @@ class Sandbox:
     def prepare(self):
         self._assert_database()
         if not self.initialized:
+            from .public_schema import migrate_account_kinds
+            migrate_account_kinds(db.engine.url.database)
             # create_all / sample seeding only add missing tables and samples.
             # Invalid databases fail instead of being deleted or recreated.
             seed_sample_content(password=secrets.token_urlsafe(48), public=True)
@@ -130,7 +132,7 @@ class Sandbox:
                     (database, Path(str(database) + '-wal'), Path(str(database) + '-journal'))
                     if path.is_file())
         if total >= self.app.config['PUBLIC_DEMO_MAX_STORAGE_BYTES']:
-            abort(503, description='展示空间已达到写入容量限制；已有内容仍保留，请稍后联系站点维护者。')
+            abort(503, description='站点已达到写入容量限制；已有内容仍保留，请联系站点维护者。')
 
     def limit(self, action):
         now = time.monotonic()
@@ -139,8 +141,8 @@ class Sandbox:
         history = self.rates.pop(key, deque())
         while history and history[0] <= now - window:
             history.popleft()
-        maximum = self.app.config['PUBLIC_DEMO_START_LIMIT' if action == 'start'
-                                  else 'PUBLIC_DEMO_WRITE_LIMIT']
+        maximum = self.app.config[{'start': 'PUBLIC_DEMO_START_LIMIT',
+                                   'auth': 'PUBLIC_DEMO_AUTH_LIMIT'}.get(action, 'PUBLIC_DEMO_WRITE_LIMIT')]
         self.rates[key] = history
         while len(self.rates) > 2048:
             self.rates.popitem(last=False)
@@ -150,10 +152,20 @@ class Sandbox:
         history.append(now)
 
     @staticmethod
-    def visitor():
+    def participant():
         return (current_user.is_authenticated
                 and str(current_user.id) == session.get('public_demo_uid')
-                and current_user.username.startswith('guest_'))
+                and current_user.account_kind in {'guest', 'account'})
+
+    visitor = participant  # Existing integrations use the historical helper name.
+
+    def check_identity_capacity(self):
+        if User.query.filter(User.account_kind != 'system').count() >= self.app.config['PUBLIC_DEMO_MAX_VISITORS']:
+            abort(429, description='站点的身份容量暂时已满；已有账号仍可登录，已有内容会继续保留。')
+
+    def quota(self, suffix):
+        prefix = 'PUBLIC_ACCOUNT_' if current_user.is_registered else 'PUBLIC_DEMO_'
+        return self.app.config[prefix + suffix]
 
     def before_request(self):
         if request.endpoint in {'static', 'bootstrap.static', 'pagedown.static'}:
@@ -167,16 +179,17 @@ class Sandbox:
             session['public_demo_epoch'] = self.epoch
         endpoint = request.endpoint or ''
         if endpoint.startswith('api.'):
-            abort(403, description='在线演示不开放 API；可在源码中查看完整接口。')
-        if endpoint == 'auth.login':
-            if request.method in {'GET', 'HEAD'}:
-                return redirect(url_for('public_demo.entry'))
-            abort(403, description='请使用演示入口，无需输入账户密码。')
-        if endpoint.startswith('auth.') and endpoint not in {'auth.logout', 'auth.change_avatar'}:
-            abort(403, description='在线展示使用浏览器访客身份，不开放注册或账户安全设置。')
+            abort(403, description='此站点暂不开放公共 API。')
+        if endpoint.startswith('auth.') and endpoint not in {
+                'auth.login', 'auth.register', 'auth.logout', 'auth.change_password'}:
+            abort(403, description='此站点暂不提供邮件验证、邮箱找回或外部头像设置。')
+        if endpoint == 'auth.change_password' and not (self.participant() and current_user.is_registered):
+            abort(403, description='访客可先创建账号，再设置或更改登录密码。')
+        if endpoint == 'auth.logout' and request.method != 'POST':
+            abort(405, description='请通过站内按钮退出当前身份。')
         if endpoint in {'main.edit_profile_admin', 'main.moderate', 'main.moderate_enable',
                         'main.moderate_disable', 'main.server_shutdown'}:
-            abort(403, description='在线演示不开放管理操作。')
+            abort(403, description='此站点不开放公共管理操作。')
         if endpoint in {'main.follow', 'main.unfollow'} and request.method != 'POST':
             abort(405, description='请通过页面按钮提交关注操作。')
         if request.method in {'GET', 'HEAD', 'OPTIONS'}:
@@ -185,25 +198,36 @@ class Sandbox:
             self.limit('start')
             self.check_storage()
             return
+        if endpoint in {'auth.login', 'auth.register', 'public_demo.join'}:
+            self.limit('auth')
+            if endpoint != 'auth.login':
+                self.check_storage()
+            return
+        if endpoint == 'public_demo.legacy_entry':
+            return
+        if endpoint == 'auth.change_password':
+            self.limit('auth')
+            return
+        if endpoint == 'auth.logout':
+            return  # CSRFProtect validates the POST before the auth view runs.
         allowed = {'main.index', 'main.post', 'main.edit', 'main.edit_profile',
                    'main.follow', 'main.unfollow'}
-        if endpoint not in allowed or not self.visitor():
-            abort(403, description='请先进入演示，再体验发布、评论和资料编辑。')
+        if endpoint not in allowed or not self.participant():
+            abort(403, description='请先以访客身份加入，或登录已有账号。')
         self.limit('write')
         self.check_storage()
         if endpoint in {'main.index', 'main.edit', 'main.post'}:
-            maximum = self.app.config['PUBLIC_DEMO_MAX_COMMENT_BODY' if endpoint == 'main.post'
-                                      else 'PUBLIC_DEMO_MAX_BODY']
+            maximum = self.quota('MAX_COMMENT_BODY' if endpoint == 'main.post' else 'MAX_BODY')
             if len(request.form.get('body', '')) > maximum:
-                abort(413, description=f'演示内容请控制在 {maximum} 字以内。')
-        if endpoint == 'main.edit_profile' and len(request.form.get('about_me', '')) > 500:
-            abort(413, description='演示自我介绍请控制在 500 字以内。')
-        if endpoint == 'main.index' and current_user.posts.count() >= self.app.config['PUBLIC_DEMO_MAX_POSTS']:
-            abort(429, description='每个访客最多发布 10 篇文章，可以继续编辑已有文章。')
-        if endpoint == 'main.post' and current_user.comments.count() >= self.app.config['PUBLIC_DEMO_MAX_COMMENTS']:
-            abort(429, description='当前访客的评论数量已达上限，已有评论会继续保留。')
-        if endpoint == 'main.follow' and current_user.followed.count() >= self.app.config['PUBLIC_DEMO_MAX_FOLLOWS'] + 1:
-            abort(429, description='每个访客最多关注 10 位用户。')
+                abort(413, description=f'内容请控制在 {maximum} 字以内。')
+        if endpoint == 'main.edit_profile' and len(request.form.get('about_me', '')) > self.quota('MAX_PROFILE_BODY'):
+            abort(413, description=f'个人简介请控制在 {self.quota("MAX_PROFILE_BODY")} 字以内。')
+        if endpoint == 'main.index' and current_user.posts.count() >= self.quota('MAX_POSTS'):
+            abort(429, description=f'当前身份最多发布 {self.quota("MAX_POSTS")} 篇文章，可继续编辑已有文章。')
+        if endpoint == 'main.post' and current_user.comments.count() >= self.quota('MAX_COMMENTS'):
+            abort(429, description='当前身份的评论数量已达上限，已有评论会继续保留。')
+        if endpoint == 'main.follow' and current_user.followed.count() >= self.quota('MAX_FOLLOWS') + 1:
+            abort(429, description=f'当前身份最多关注 {self.quota("MAX_FOLLOWS")} 位作者。')
 
     def release(self, error=None):
         lease = g.pop('public_demo_lease', None)
@@ -214,31 +238,38 @@ class Sandbox:
                 lease.__exit__(None, None, None)
 
 
-@demo.route('/demo', methods=['GET', 'POST'])
+@demo.route('/welcome', methods=['GET', 'POST'])
 def entry():
     sandbox = current_app.extensions['public_demo']
     if sandbox.visitor():
         return redirect(url_for('main.index'))
     form = EntryForm()
     if form.validate_on_submit():
-        if User.query.count() - 1 >= current_app.config['PUBLIC_DEMO_MAX_VISITORS']:
-            abort(429, description='展示空间已达到访客容量限制，暂时无法新增身份；已有内容继续保留。')
+        sandbox.check_identity_capacity()
         token = secrets.token_hex(8)
         while User.query.filter_by(username=f'guest_{token[:6]}').first() is not None:
             token = secrets.token_hex(8)
-        user = User(email=f'{token}@example.invalid', username=f'guest_{token[:6]}',
+        user = User(email=None, username=f'guest_{token[:6]}', account_kind='guest',
                     password=secrets.token_urlsafe(48), confirmed=True,
-                    name='体验访客', location='展示空间', about_me='这是当前浏览器的访客身份。',
+                    name='访客', location='', about_me='',
                     role=Role.query.filter_by(default=True).first())
         db.session.add(user)
         db.session.commit()
-        session.clear()
-        session['public_demo_epoch'] = sandbox.epoch
-        session['public_demo_uid'] = str(user.id)
-        session.permanent = True
-        login_user(user, remember=False)
+        from .public_accounts import establish_identity
+        establish_identity(user)
         return redirect(url_for('main.index'))
     return render_template('public_demo/entry.html', form=form)
+
+
+@demo.route('/demo', methods=['GET', 'POST'])
+def legacy_entry():
+    return redirect(url_for('public_demo.entry'), code=307 if request.method == 'POST' else 302)
+
+
+@demo.route('/join', methods=['GET', 'POST'])
+def join():
+    from .public_accounts import register
+    return register()
 
 
 @demo.get('/healthz')

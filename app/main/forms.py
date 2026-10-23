@@ -24,7 +24,7 @@ class EditProfileForm(FlaskForm):
         if current_app.config.get('PUBLIC_DEMO'):
             self.name.label.text = '显示名称'
             self.location.label.text = '地区（可留空）'
-            self.about_me.label.text = '演示简介'
+            self.about_me.label.text = '个人简介'
 
 
 class EditProfileAdminForm(FlaskForm):

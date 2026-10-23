@@ -1,15 +1,8 @@
-{% extends 'base.html' %}
-{% import 'bootstrap/wtf.html' as wtf %}
-{% block title %}{{ super() }}在线体验{% endblock %}
+{% extends "base.html" %}
+{% import "_forms.html" as forms %}
+{% import "_ui.html" as ui with context %}
+{% block title %}{{ super() }}开始写作{% endblock %}
 {% block page_content %}
-<div class="page-header"><h1>体验这个早期 Web 工程</h1></div>
-<div class="row">
-    <div class="col-md-7">
-        <p class="lead">从一篇 Markdown 开始。</p>
-        <p>进入后会为当前浏览器创建独立访客身份。你可以发布与编辑自己的文章、回复示例文章、修改个人资料，也可以体验关注时间线；保存的内容会长期保留。</p>
-        <p>身份通过浏览器 Cookie 识别，活跃访问可延长 30 天会话。无痕模式、清除 Cookie 或身份过期后，原内容仍在，但无法保证恢复原身份继续编辑。无需提供邮箱、密码或真实个人信息。</p>
-        {{ wtf.quick_form(form) }}
-        <p style="margin-top:16px"><a href="{{ url_for('main.index') }}">先浏览示例文章</a></p>
-    </div>
-</div>
+<section class="welcome-page"><div class="welcome-copy"><h1>以访客身份加入</h1><p class="welcome-lead">不用先填一长串资料。<br>从写下第一个想法开始。</p><p>发布文章，参与讨论，关注喜欢的作者。你可以先使用访客身份，之后再设置自己的账号。</p><ul class="welcome-features"><li>{{ ui.icon('edit') }}用 Markdown 记录与分享</li><li>{{ ui.icon('comment') }}和其他读者展开讨论</li><li>{{ ui.icon('user') }}拥有自己的文章与主页</li></ul><a class="quiet-link" href="{{ url_for('main.index') }}">先读一会儿 {{ ui.icon('arrow') }}</a></div>
+<div class="welcome-action"><h2>准备好了吗？</h2><p>点击后，为当前浏览器建立一个访客身份。</p>{{ forms.render_form(form, '开始写作') }}<p class="entry-privacy">文章、评论和个人资料会公开显示。访客身份保存在当前浏览器，清除 Cookie 后可能无法找回；设置账号可以继续保留这个身份。</p><div class="entry-account"><p>想直接使用账号？<a href="{{ url_for('auth.register') }}">创建账号</a></p><p>已经来过？<a href="{{ url_for('auth.login') }}">登录</a></p></div></div></section>
 {% endblock %}

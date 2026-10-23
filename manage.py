@@ -52,13 +52,13 @@ def seed_demo():
 
 @app.cli.command('prepare-public-demo')
 def prepare_public_demo():
-    """Add missing tables / samples without deleting existing visitor data."""
+    """Prepare LISS storage and compatible account metadata without deleting data."""
     sandbox = app.extensions.get('public_demo')
     if sandbox is None:
         raise click.ClickException('Set FLASK_CONFIG=public-demo first.')
     with sandbox.exclusive():
         sandbox.prepare()
-    click.echo('Persistent visitor space ready. Saved content is retained; enter through /demo.')
+    click.echo('LISS is ready. Saved content is retained; join through /welcome.')
 
 
 @app.cli.command('backup-public-demo')

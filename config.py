@@ -19,8 +19,8 @@ class Config:
     MAIL_USE_SSL = True
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    FLASKY_MAIL_SUBJECT_PREFIX = '[LIHOU网站]'
-    FLASKY_MAIL_SENDER = 'LIHOU网站系统 <lihou_tk@126.com>'
+    FLASKY_MAIL_SUBJECT_PREFIX = '[LISS]'
+    FLASKY_MAIL_SENDER = os.environ.get('MAIL_SENDER') or 'LISS <noreply@example.invalid>'
     FLASKY_ADMIN = os.environ.get('FLASKY_ADMIN')
     FLASKY_POSTS_PER_PAGE = 20
     FLASKY_FOLLOWERS_PER_PAGE = 50
@@ -87,21 +87,29 @@ class DemoConfig(DevelopmentConfig):
 
 
 class PublicDemoConfig(DemoConfig):
-    """Persistent visitor showcase; the historical config name stays compatible."""
+    """Persistent LISS site; historical config and storage names stay compatible."""
     PUBLIC_DEMO = True
-    MAX_CONTENT_LENGTH = 16 * 1024
+    MAX_CONTENT_LENGTH = 256 * 1024
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)
     SESSION_REFRESH_EACH_REQUEST = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     PUBLIC_DEMO_MAX_VISITORS = 2000
-    PUBLIC_DEMO_MAX_POSTS = 10
-    PUBLIC_DEMO_MAX_COMMENTS = 20
-    PUBLIC_DEMO_MAX_FOLLOWS = 10
-    PUBLIC_DEMO_MAX_BODY = 4000
-    PUBLIC_DEMO_MAX_COMMENT_BODY = 1000
-    PUBLIC_DEMO_WRITE_LIMIT = 20
-    PUBLIC_DEMO_START_LIMIT = 10
+    PUBLIC_DEMO_MAX_POSTS = 100
+    PUBLIC_DEMO_MAX_COMMENTS = 500
+    PUBLIC_DEMO_MAX_FOLLOWS = 200
+    PUBLIC_DEMO_MAX_BODY = 8000
+    PUBLIC_DEMO_MAX_COMMENT_BODY = 2000
+    PUBLIC_DEMO_MAX_PROFILE_BODY = 500
+    PUBLIC_ACCOUNT_MAX_POSTS = 1000
+    PUBLIC_ACCOUNT_MAX_COMMENTS = 5000
+    PUBLIC_ACCOUNT_MAX_FOLLOWS = 1000
+    PUBLIC_ACCOUNT_MAX_BODY = 20000
+    PUBLIC_ACCOUNT_MAX_COMMENT_BODY = 4000
+    PUBLIC_ACCOUNT_MAX_PROFILE_BODY = 1500
+    PUBLIC_DEMO_WRITE_LIMIT = 60
+    PUBLIC_DEMO_START_LIMIT = 20
+    PUBLIC_DEMO_AUTH_LIMIT = 10
     PUBLIC_DEMO_RATE_WINDOW = 60
 
     @classmethod
@@ -109,11 +117,11 @@ class PublicDemoConfig(DemoConfig):
         secret = os.environ.get('SECRET_KEY', '')
         if len(secret) < 32:
             raise RuntimeError('public-demo requires a random SECRET_KEY of at least 32 characters.')
-        storage = os.path.abspath(os.environ.get('LIHOU_DEMO_DIR') or
+        storage = os.path.abspath(os.environ.get('LISS_DATA_DIR') or os.environ.get('LIHOU_DEMO_DIR') or
                                   os.path.join(basedir, 'instance', 'public-demo'))
         os.makedirs(storage, exist_ok=True)
-        max_visitors = int(os.environ.get('LIHOU_DEMO_MAX_VISITORS', '2000'))
-        max_storage_mib = int(os.environ.get('LIHOU_DEMO_MAX_STORAGE_MIB', '128'))
+        max_visitors = int(os.environ.get('LISS_MAX_IDENTITIES') or os.environ.get('LIHOU_DEMO_MAX_VISITORS', '2000'))
+        max_storage_mib = int(os.environ.get('LISS_MAX_STORAGE_MIB') or os.environ.get('LIHOU_DEMO_MAX_STORAGE_MIB', '128'))
         if max_visitors < 1 or max_storage_mib < 1:
             raise RuntimeError('Visitor and storage limits must be positive.')
         app.config.update(

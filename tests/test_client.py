@@ -1,4 +1,3 @@
-import re
 import unittest
 from flask import url_for
 from app import create_app, db
@@ -37,12 +36,14 @@ class FlaskClientTestCase(unittest.TestCase):
             'email': 'john@example.com',
             'password': 'cat'
         }, follow_redirects=True)
-        self.assertTrue(re.search(r'你好,\s+john!'.encode(), response.data))
-        self.assertTrue(
-            '你的邮箱还未验证，请先验证你的邮箱'.encode() in response.data)
+        user = User.query.filter_by(email='john@example.com').first()
+        self.assertFalse(user.confirmed)
+        self.assertEqual(response.request.path, url_for('auth.unconfirmed', _external=False))
+        self.assertIn(url_for('auth.resend_confirmation', _external=False).encode(), response.data)
+        with self.client.session_transaction() as saved:
+            self.assertEqual(saved['_user_id'], str(user.id))
 
         # 发送确认令牌
-        user = User.query.filter_by(email='john@example.com').first()
         token = user.generate_confirmation_token()
         response = self.client.get(url_for('auth.confirm', token=token),
                                    follow_redirects=True)

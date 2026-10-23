@@ -71,6 +71,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(64), unique=True, index=True)
     username = db.Column(db.String(64), unique=True, index=True)
+    account_kind = db.Column(db.String(16), nullable=False, default='account', server_default='account')
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     password_hash = db.Column(db.String(256))
     confirmed = db.Column(db.Boolean, default=False)
@@ -128,7 +129,7 @@ class User(UserMixin, db.Model):
         super(User, self).__init__(**kwargs)
         with db.session.no_autoflush:
             if self.role is None:
-                if self.email == current_app.config['FLASKY_ADMIN']:
+                if self.email and current_app.config.get('FLASKY_ADMIN') and self.email == current_app.config['FLASKY_ADMIN']:
                     self.role = Role.query.filter_by(permissions=0xff).first()
                 if self.role is None:
                     self.role = Role.query.filter_by(default=True).first()
@@ -136,6 +137,26 @@ class User(UserMixin, db.Model):
             self.avatar_hash = hashlib.md5(
                 self.email.encode('utf-8')).hexdigest()
         self.followed.append(Follow(followed=self))
+
+    @property
+    def is_visitor(self):
+        return self.account_kind == 'guest'
+
+    is_guest = is_visitor
+
+    @property
+    def is_registered(self):
+        return self.account_kind == 'account'
+
+    @property
+    def is_system(self):
+        return self.account_kind == 'system'
+
+    @property
+    def display_name(self):
+        if self.is_system and self.username == 'demo' and self.name in {None, '', 'LIHOU'}:
+            return 'Liss'
+        return self.name or self.username
 
     @property
     def password(self):
@@ -222,7 +243,7 @@ class User(UserMixin, db.Model):
         else:
             url = 'http://www.gravatar.com/avatar'
         hash = self.avatar_hash or hashlib.md5(
-            self.email.encode('utf-8')).hexdigest()
+            (self.email or self.username or '').encode('utf-8')).hexdigest()
         return '{url}/{hash}?s={size}&d={default}&r={rating}'.format(
             url=url, hash=hash, size=size, default=default, rating=rating)
 
@@ -281,6 +302,9 @@ class User(UserMixin, db.Model):
 
 
 class AnonymousUser(AnonymousUserMixin):
+    is_visitor = is_guest = is_registered = is_system = False
+    display_name = '访客'
+
     def can(self, permissions):
         return False
 
