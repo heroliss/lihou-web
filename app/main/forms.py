@@ -1,3 +1,4 @@
+from flask import current_app
 from flask_wtf import FlaskForm
 from wtforms import StringField, TextAreaField, BooleanField, SelectField,\
     SubmitField
@@ -17,6 +18,13 @@ class EditProfileForm(FlaskForm):
     location = StringField('地址', validators=[Length(0, 64)])
     about_me = TextAreaField('自我介绍')
     submit = SubmitField('提交')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if current_app.config.get('PUBLIC_DEMO'):
+            self.name.label.text = '显示名称'
+            self.location.label.text = '地区（可留空）'
+            self.about_me.label.text = '演示简介'
 
 
 class EditProfileAdminForm(FlaskForm):
