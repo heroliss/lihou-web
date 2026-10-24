@@ -71,7 +71,7 @@ PROJECTS = {
     'intelligence-index-cost-linear': ('Intelligence × Cost', 'AI 能力与费用可视化'),
     'china-house-price-map': ('全国房价交互地图', '地图与数据探索'),
     'learnopengl': ('LearnOpenGL', '图形渲染实验'),
-    'sightflow': ('SightFlow · 视流自动化', '图像识别与可视流程自动化'),
+    'aoe4-flow': ('AoE4 Flow · 帝国时代 4 自动化助手', '帝国时代 4 · 图像识别与可视流程自动化'),
     'ga-sort': ('GA-sort', '遗传算法实验'),
     'route-lab': ('Route Lab', '旅行商算法实验室'),
     'sort-lab': ('Sort Lab', '排序算法实验台'),
@@ -83,7 +83,7 @@ PROJECTS = {
     'floydshortestpath': ('FloydShortestPath', 'Unity 寻路算法'),
     'liss-web': ('Liss Community', '写作与交流社区'),
 }
-PROJECT_SLUG_ALIASES = {'aoe4-autovillager-tool': 'sightflow'}
+PROJECT_SLUG_ALIASES = {'aoe4-autovillager-tool': 'aoe4-flow'}
 
 
 def canonical_project_slug(slug):
