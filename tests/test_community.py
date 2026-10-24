@@ -87,6 +87,11 @@ class CommunityTests(unittest.TestCase):
             'gomoku': ('Gomoku v3', '五子棋与搜索引擎实验'),
             'route-lab': ('Route Lab', '旅行商算法实验室'),
             'sort-lab': ('Sort Lab', '排序算法实验台'),
+            'qt-labs': ('Liss Qt Labs', '进程调度、压缩与计算器'),
+            'text-lab': ('Liss Text Lab', '分词、校对与文件检索'),
+            'systems-lab': ('Liss Systems Lab', '分页、设备、资源与质数实验'),
+            'nex': ('NEX', '本地事项与计划管理'),
+            'liss-blocks': ('Liss Blocks', '方块消行与桌面游戏'),
         }
         with self.app.app_context():
             author = User.query.order_by(User.id).first()
