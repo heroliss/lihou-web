@@ -1,6 +1,8 @@
-"""Project discussions and a same-origin, statically built engineering gallery."""
+"""Project discussions and a stable entry point to the engineering gallery."""
 from pathlib import Path
 import os
+import re
+from urllib.parse import quote, quote_from_bytes, urlsplit, urlunsplit
 
 from flask import Blueprint, abort, current_app, redirect, render_template, request, send_from_directory, url_for
 from flask_login import current_user
@@ -11,6 +13,52 @@ from .main.forms import PostForm
 from .models import Permission, Post
 
 community = Blueprint('community', __name__)
+
+
+def _clean_portfolio_path(path):
+    """Do not let a request path change the configured destination or its base."""
+    if (path.startswith('/') or '\\' in path or '%' in path or '//' in path or
+            any(ord(character) < 32 or ord(character) == 127 for character in path)):
+        return False
+    return all(not part.startswith('.') for part in path.rstrip('/').split('/')) if path else True
+
+
+def portfolio_base_url(value):
+    """Validate a fixed public HTTPS destination; empty keeps local serving enabled."""
+    if value is None or value == '':
+        return ''
+    error = ('LISS_PORTFOLIO_URL must be a fixed HTTPS URL without credentials, '
+             'port, query or fragment, and with a clean path.')
+    if (not isinstance(value, str) or value != value.strip() or '\\' in value or
+            '?' in value or '#' in value or
+            any(ord(character) <= 32 or ord(character) == 127 for character in value)):
+        raise ValueError(error)
+    try:
+        parsed = urlsplit(value)
+        if (parsed.scheme != 'https' or not parsed.hostname or parsed.username is not None or
+                parsed.password is not None or parsed.port is not None or
+                parsed.netloc.lower() != parsed.hostname or
+                len(parsed.hostname) > 253 or any(not re.fullmatch(
+                    r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?', label)
+                    for label in parsed.hostname.split('.')) or
+                not _clean_portfolio_path(parsed.path.lstrip('/')) or parsed.path.startswith('//')):
+            raise ValueError(error)
+    except ValueError as exception:
+        raise ValueError(error) from exception
+    return urlunsplit(('https', parsed.hostname, parsed.path.rstrip('/') + '/', '', ''))
+
+
+@community.record_once
+def validate_portfolio_config(state):
+    # Invalid production configuration must fail clearly, rather than serve an old build.
+    state.app.config['LISS_PORTFOLIO_URL'] = portfolio_base_url(
+        state.app.config.get('LISS_PORTFOLIO_URL'))
+
+
+def _with_request_query(location):
+    if request.query_string:
+        location += '?' + quote_from_bytes(request.query_string, safe="!$&'()*+,-./:;=?@_%~")
+    return location
 
 # Stable slugs shared with the engineering gallery; never accept arbitrary links.
 PROJECTS = {
@@ -71,14 +119,19 @@ def portfolio_root():
 @community.get('/works/')
 @community.get('/works/<path:path>')
 def portfolio(path=''):
+    if not _clean_portfolio_path(path):
+        abort(404)
+    external = portfolio_base_url(current_app.config.get('LISS_PORTFOLIO_URL'))
+    if external:
+        return redirect(_with_request_query(external + quote(path, safe='/')), code=308)
     root = portfolio_root()
     target = safe_join(str(root), path)
-    if target is None or any(part.startswith('.') for part in Path(path).parts):
+    if target is None:
         abort(404)
     target = Path(target)
     if target.is_dir():
         if path and not request.path.endswith('/'):
-            return redirect(request.path + '/', code=308)
+            return redirect(_with_request_query(request.path + '/'), code=308)
         target /= 'index.html'
     if not target.is_file():
         if (root / '404.html').is_file():

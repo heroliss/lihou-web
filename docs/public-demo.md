@@ -2,15 +2,19 @@
 
 LISS 是访客优先、可选账号的持久化写作与交流站点。内部配置名 `public-demo` 保留兼容；正式入口 `/welcome`，旧 `/demo` 重定向。文章、评论、资料与关注关系不会因 Cookie 过期、重启或普通代码更新自动删除。
 
-2026-10-24 新增同域 `/works/` 作品展厅和 12 个项目讨论入口，以及可配置的邮箱注册 / 确认 / 找回。真实邮件服务未配置时，旧用户名注册仍可用并显示提示。下面旧账号描述以本节邮箱配置与当前页面为准。
+2026-10-24 新增 `/works/` 作品展厅兼容入口和 12 个项目讨论入口，以及可配置的邮箱注册 / 确认 / 找回。真实邮件服务未配置时，旧用户名注册仍可用并显示提示。下面旧账号描述以本节邮箱配置与当前页面为准。
 
 ## 作品站和项目讨论
 
-工程展厅以 `SITE_BASE=/works/` 构建，在仓库旁的 `portfolio/` 发布目录运行；源码保留于主工作区 `site/`。可以通过私有变量 `LISS_PORTFOLIO_DIR` 指定其他专用构建目录。不要指向源码、数据目录或密钥目录。`/works/`、`/works/projects/<slug>/`、媒体与脚本均由独立静态路由提供，不占用访客数据库的请求锁。
+正式作品站 Liss Works 部署在 **https://heroliss.github.io/liss-works/**；社区和数据库继续运行于 PythonAnywhere。作品站以 `SITE_BASE=/liss-works/` 构建，源码保留于主工作区 `site/`。社区导航继续使用稳定的 `/works/` 入口，私有服务器配置设置 `"LISS_PORTFOLIO_URL": "https://heroliss.github.io/liss-works/"` 后，以 308 跳转到 Pages 的对应路径，并保留查询参数；旧收藏的项目详情、媒体与脚本地址同样兼容。项目交流仍返回 PythonAnywhere，不迁移数据库或身份 Cookie。
+
+`LISS_PORTFOLIO_URL` 默认留空，本地与独立验证时继续提供同域静态作品目录。目标必须是固定 HTTPS URL，不含用户信息、端口、查询或片段，路径不得含 `..`、隐藏片段、重复斜杠或反斜杠；非法配置启动时明确失败。访客提交的地址、Host 和查询参数均不能改变跳转目标。浏览器的 `#片段` 不发送给服务器，由浏览器在跳转时保留。
+
+本地静态模式以 `SITE_BASE=/works/` 构建，在仓库旁的 `portfolio/` 发布目录运行。可通过 `LISS_PORTFOLIO_DIR` 指定其他专用构建目录，不要指向源码、数据目录或密钥目录。`/works/`、`/works/projects/<slug>/`、媒体与脚本均由独立静态路由提供，不占用访客数据库的请求锁。
 
 项目讨论地址为 `/projects/<slug>/talk/`，固定 12 个 slug，讨论仍存入 `posts`，新 `project_entries` 表关联项目。新访客加入后会回到对应讨论页；普通发文、评论、编辑、配额与 CSRF 保护继续适用。GET 不创建任何项目帖子。
 
-部署已审核的构建包时，先按通常流程备份并更新源码，然后运行 `deploy/install_portfolio.py --url <GitHub-Release附件URL> --sha256 <已核对SHA256>`。安装器验证包体摘要、子路径和路径边界，保留旧构建作为 `portfolio-previous-*`；不会删除数据库或源码。发布媒体约 18.3 MB，不是每次访问的流量。作品目录无需 Python 重新构建或 Node 环境。
+只有使用本地静态模式时才需要部署作品构建包：先按通常流程备份并更新源码，再运行 `deploy/install_portfolio.py --url <GitHub-Release附件URL> --sha256 <已核对SHA256>`。安装器验证包体摘要、子路径和路径边界，保留旧构建作为 `portfolio-previous-*`；不会删除数据库或源码。发布媒体约 18.3 MB，不是每次访问的流量。作品目录无需 Python 重新构建或 Node 环境。外部 Pages 模式无需向 PythonAnywhere 复制作品附件；已有目录保留即可，配置留空时可明确回退。
 
 ## 可选邮箱、验证与密码找回
 

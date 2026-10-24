@@ -35,7 +35,13 @@ class Config:
     LISS_MAIL_API_KEY = os.environ.get('LISS_MAIL_API_KEY', '')
     LISS_MAIL_SENDER_EMAIL = os.environ.get('LISS_MAIL_SENDER_EMAIL', '')
     LISS_MAIL_SENDER_NAME = os.environ.get('LISS_MAIL_SENDER_NAME', 'LISS')
+    LISS_ALIYUN_ACCESS_KEY_ID = os.environ.get('LISS_ALIYUN_ACCESS_KEY_ID', '')
+    LISS_ALIYUN_ACCESS_KEY_SECRET = os.environ.get('LISS_ALIYUN_ACCESS_KEY_SECRET', '')
+    LISS_ALIYUN_REGION = os.environ.get('LISS_ALIYUN_REGION', 'cn-hangzhou')
+    LISS_ALIYUN_SENDER_VERIFIED = os.environ.get('LISS_ALIYUN_SENDER_VERIFIED', '0') == '1'
     LISS_PUBLIC_BASE_URL = os.environ.get('LISS_PUBLIC_BASE_URL', '')
+    # Empty serves the local portfolio directory; production can redirect to Pages.
+    LISS_PORTFOLIO_URL = os.environ.get('LISS_PORTFOLIO_URL', '')
     LISS_MAIL_TIMEOUT = 10
     LISS_EMAIL_TOKEN_SECONDS = 3600
     PUBLIC_MAIL_COOLDOWN_SECONDS = 60

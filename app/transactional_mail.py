@@ -7,6 +7,8 @@ from urllib.request import Request, urlopen
 
 from flask import current_app, render_template, url_for
 
+from . import aliyun_mail
+
 
 @dataclass(frozen=True)
 class DeliveryResult:
@@ -25,6 +27,8 @@ def email_accounts_enabled():
                   and not base.fragment and base.path in {'', '/'})
     if provider == 'outbox':
         return bool(current_app.testing and valid_base)
+    if provider == 'aliyun':
+        return bool(valid_base and aliyun_mail.configured(config))
     sender = config.get('LISS_MAIL_SENDER_EMAIL', '')
     return bool(valid_base and provider in {'brevo', 'resend'}
                 and config.get('LISS_MAIL_API_KEY') and '@' in sender
@@ -51,6 +55,8 @@ def deliver_account_email(recipient, subject, template, **context):
         # This transport cannot be enabled outside Flask's explicit testing mode.
         current_app.extensions.setdefault('liss_mail_outbox', []).append(message)
         return DeliveryResult(True)
+    if provider == 'aliyun':
+        return DeliveryResult(*aliyun_mail.send_account_mail(config, message))
     sender_email = config['LISS_MAIL_SENDER_EMAIL']
     sender_name = config.get('LISS_MAIL_SENDER_NAME', 'LISS')
     if provider == 'brevo':

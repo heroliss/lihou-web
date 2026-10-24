@@ -11,6 +11,7 @@ from sqlalchemy import text
 from app import create_app, db
 from app.community import PROJECTS, ProjectEntry
 from app.models import Post, User
+from config import PublicDemoConfig
 
 
 class CommunityTests(unittest.TestCase):
@@ -95,6 +96,69 @@ class CommunityTests(unittest.TestCase):
         self.assertEqual(self.client.get('/works/projects/outpost').status_code,308)
         self.assertEqual(self.client.get('/works/.secret').status_code,404)
         self.assertEqual(self.client.get('/works/../public-demo.sqlite').status_code,404)
+
+    def test_external_portfolio_redirects_home_projects_assets_and_query(self):
+        self.app.config['LISS_PORTFOLIO_URL'] = 'https://heroliss.github.io/liss-works/'
+        for path, suffix in (
+                ('/works/', ''),
+                ('/works/projects/outpost/', 'projects/outpost/'),
+                ('/works/projects/lihou-web/', 'projects/lihou-web/'),
+                ('/works/_astro/main.abc123.css', '_astro/main.abc123.css'),
+                ('/works/media/%23fragment.webp', 'media/%23fragment.webp'),
+                ('/works/media/作品截图.webp', 'media/%E4%BD%9C%E5%93%81%E6%88%AA%E5%9B%BE.webp'),
+                ('/works/projects/outpost/?view=detail&tag=a%2Bb&next=https%3A%2F%2Fexample.test',
+                 'projects/outpost/?view=detail&tag=a%2Bb&next=https%3A%2F%2Fexample.test')):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 308)
+                self.assertEqual(response.location, 'https://heroliss.github.io/liss-works/' + suffix)
+
+    def test_external_portfolio_normalizes_configured_base_and_keeps_community_links(self):
+        self.app.config['LISS_PORTFOLIO_URL'] = 'https://heroliss.github.io/liss-works'
+        self.assertEqual(self.client.get('/works/').location, 'https://heroliss.github.io/liss-works/')
+        for path in ('/', '/projects/ssframework/talk/'):
+            page = self.client.get(path).get_data(as_text=True)
+            self.assertIn('/works/', page)
+        # Missing-slash requests first stay on this origin, retaining their query.
+        first = self.client.get('/works?from=community')
+        self.assertEqual(first.status_code, 308)
+        self.assertTrue(first.location.endswith('/works/?from=community'))
+        second = self.client.get('/works/?from=community')
+        self.assertEqual(second.location, 'https://heroliss.github.io/liss-works/?from=community')
+
+    def test_external_portfolio_rejects_unsafe_paths_instead_of_changing_destination(self):
+        self.app.config['LISS_PORTFOLIO_URL'] = 'https://heroliss.github.io/liss-works/'
+        for path in ('../private', '%2e%2e/private', '%252e%252e/private', '.secret',
+                     'projects/../about', r'projects\..\private', 'projects//outpost/',
+                     'projects/%00hidden', '/evil.test/', '//evil.test/'):
+            with self.subTest(path=path):
+                response = self.client.get('/works/' + path)
+                if response.status_code == 308:
+                    # Werkzeug may normalize repeated slashes before matching a route.
+                    self.assertTrue(response.location.startswith('http://localhost/works/'))
+                else:
+                    self.assertEqual(response.status_code, 404)
+        response = self.client.get('/works/https://evil.test/')
+        self.assertEqual(response.status_code, 404)
+        response = self.client.get('/works/?next=//evil.test')
+        self.assertEqual(response.location, 'https://heroliss.github.io/liss-works/?next=//evil.test')
+
+    def test_external_portfolio_bad_configuration_fails_at_startup(self):
+        for value in ('http://example.test/', '//example.test/', 'https://user:secret@example.test/',
+                      'https://example.test:443/', 'https://example.test:/',
+                      'https://example.test/?next=elsewhere',
+                      'https://example.test/#section', 'https://example.test/../outside',
+                      'https://example.test//works/', 'https://example.test/%2e%2e/',
+                      'https://example.test/works\\other', ' https://example.test/',
+                      'https://example.test\n', 'https://example..test/', 'https://exam%70le.test/'):
+            with self.subTest(value=value), patch.object(PublicDemoConfig, 'LISS_PORTFOLIO_URL', value):
+                with self.assertRaisesRegex(ValueError, 'LISS_PORTFOLIO_URL'):
+                    create_app('public-demo')
+
+    def test_external_portfolio_runtime_invalid_config_does_not_fall_back_to_old_files(self):
+        self.app.config['LISS_PORTFOLIO_URL'] = 'http://example.test/'
+        with self.assertRaisesRegex(ValueError, 'LISS_PORTFOLIO_URL'):
+            self.client.get('/works/')
 
     def test_mail_cooldown_is_persistent_and_does_not_store_addresses(self):
         with self.app.test_request_context('/', environ_base={'REMOTE_ADDR':'192.0.2.1'}):
