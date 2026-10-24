@@ -19,7 +19,10 @@
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
   }
   function tool(name, title, action, glyph) {
-    return { name: name, title: title, action: action, icon: icon(glyph || name), className: 'writing-tool' };
+    return {
+      name: name, title: title, action: action, icon: icon(glyph || name), className: 'writing-tool',
+      noDisable: ['preview', 'side-by-side', 'fullscreen'].indexOf(name) !== -1
+    };
   }
   // Preview is untrusted input too. Keep basic Markdown and reject inline image
   // data; the Python sanitizer is still authoritative when an article is saved.
@@ -84,9 +87,21 @@
       input.setAttribute('aria-label', '文章正文，Markdown 编辑器');
       input.setAttribute('aria-describedby', textarea.getAttribute('aria-describedby'));
       editor.gui.toolbar.setAttribute('aria-label', '文章格式工具栏');
+      function syncToolbarHeight() {
+        field.style.setProperty('--writing-toolbar-height', Math.ceil(editor.gui.toolbar.getBoundingClientRect().height) + 'px');
+      }
+      syncToolbarHeight();
+      if (window.ResizeObserver) new window.ResizeObserver(syncToolbarHeight).observe(editor.gui.toolbar);
       editor.gui.toolbar.querySelectorAll('button').forEach(function (button) {
         button.setAttribute('aria-label', button.title);
+        button.tabIndex = 0;
       });
+      // Preserve the native textarea's keyboard exit instead of trapping Tab
+      // and Shift+Tab as indentation commands in a general writing form.
+      var keyMap = editor.codemirror.getOption('extraKeys');
+      keyMap.Tab = false;
+      keyMap['Shift-Tab'] = false;
+      editor.codemirror.setOption('extraKeys', keyMap);
       form.addEventListener('submit', function () { editor.codemirror.save(); });
       function refresh() {
         editor.codemirror.refresh();
@@ -98,6 +113,7 @@
       window.matchMedia('(max-width: 600px)').addEventListener('change', function (event) {
         if (event.matches && editor.isSideBySideActive()) editor.toggleSideBySide();
         editor.codemirror.refresh();
+        syncToolbarHeight();
       });
       document.addEventListener('liss:write', refresh);
       if (!composer || composer.open) refresh();

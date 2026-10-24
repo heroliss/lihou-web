@@ -277,9 +277,9 @@ textarea.form-control { resize: vertical; }
 .EasyMDEContainer .editor-preview img { display: block; max-width: 100%; height: auto; border-radius: 5px; }
 .EasyMDEContainer .editor-preview-side { border-color: var(--line); border-radius: 0 0 6px; }
 .EasyMDEContainer .CodeMirror-sided { border-radius: 0 0 0 6px; }
-.EasyMDEContainer .editor-toolbar.fullscreen { z-index: 102; background: var(--surface); }
-.EasyMDEContainer .CodeMirror-fullscreen { background: var(--input); z-index: 101; }
-.EasyMDEContainer .editor-preview-side.editor-preview-active-side { z-index: 103; }
+.EasyMDEContainer .editor-toolbar.fullscreen { z-index: 102; background: var(--surface); height: auto; min-height: 50px; }
+.EasyMDEContainer .CodeMirror-fullscreen { top: var(--writing-toolbar-height, 50px); background: var(--input); z-index: 101; }
+.EasyMDEContainer .editor-preview-side.editor-preview-active-side { top: var(--writing-toolbar-height, 50px); z-index: 103; }
 @media (max-width: 600px) {
   .writing-policy { display: block; }
   .writing-policy>a { display: inline-block; margin-top: 8px; text-align: left; }

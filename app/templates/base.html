@@ -11,7 +11,7 @@
 {% if request.endpoint in ['main.index', 'main.edit', 'community.project_talk'] and current_user.is_authenticated %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/easymde-2.21.0/easymde.min.css') }}">
 {% endif %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-4">
+<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-5">
 {% endblock %}
 {% block navbar %}
 <a class="skip-link" href="#main-content">跳到正文</a>
@@ -58,6 +58,6 @@
 {% if request.endpoint in ['main.index', 'main.edit', 'community.project_talk'] and current_user.is_authenticated %}
 <script src="{{ url_for('static', filename='vendor/dompurify-3.4.17/purify.min.js') }}" defer></script>
 <script src="{{ url_for('static', filename='vendor/easymde-2.21.0/easymde.min.js') }}" defer></script>
-<script src="{{ url_for('static', filename='writing.js') }}?v=20261024-1" defer></script>
+<script src="{{ url_for('static', filename='writing.js') }}?v=20261024-2" defer></script>
 {% endif %}
 {% endblock %}
