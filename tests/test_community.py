@@ -82,8 +82,10 @@ class CommunityTests(unittest.TestCase):
             self.assertEqual(Post.query.count(), 3)
             self.assertEqual(ProjectEntry.query.count(), 0)
 
-    def test_aoe4_flow_catalog_has_twenty_unique_projects(self):
-        self.assertEqual(len(PROJECTS), 20)
+    def test_aoe4_flow_catalog_includes_browser_tools_and_unique_projects(self):
+        self.assertEqual(len(PROJECTS), 22)
+        self.assertIn('mkfun', PROJECTS)
+        self.assertIn('utility-lab', PROJECTS)
         self.assertEqual(PROJECTS['aoe4-flow'], ('AoE4 Flow · 帝国时代 4 自动化助手', '帝国时代 4 · 图像识别与可视流程自动化'))
         self.assertNotIn('aoe4-autovillager-tool', PROJECTS)
         page = self.client.get('/projects/outpost/talk/').get_data(as_text=True)
