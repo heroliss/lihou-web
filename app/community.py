@@ -82,6 +82,8 @@ PROJECTS = {
     'liss-blocks': ('Liss Blocks', '方块消行与桌面游戏'),
     'floydshortestpath': ('FloydShortestPath', 'Unity 寻路算法'),
     'liss-web': ('Liss Community', '写作与交流社区'),
+    'mkfun': ('mkfun', '嵌套容器映射与函数生成实验'),
+    'utility-lab': ('Liss Utilities', 'Unicode 字符与本地文件名工具'),
 }
 PROJECT_SLUG_ALIASES = {'aoe4-autovillager-tool': 'aoe4-flow'}
 
