@@ -82,6 +82,74 @@ class CommunityTests(unittest.TestCase):
             self.assertEqual(Post.query.count(), 3)
             self.assertEqual(ProjectEntry.query.count(), 0)
 
+    def test_sightflow_catalog_has_twenty_unique_projects(self):
+        self.assertEqual(len(PROJECTS), 20)
+        self.assertEqual(PROJECTS['sightflow'], ('SightFlow · 视流自动化', '图像识别与可视流程自动化'))
+        self.assertNotIn('aoe4-autovillager-tool', PROJECTS)
+        page = self.client.get('/projects/outpost/talk/').get_data(as_text=True)
+        self.assertEqual(page.count('href="/projects/sightflow/talk/"'), 1)
+        self.assertNotIn('/projects/aoe4-autovillager-tool/talk/', page)
+
+    def test_legacy_discussion_get_redirects_and_preserves_query(self):
+        query = '?page=2&tag=a%2Bb&next=https%3A%2F%2Fexample.test'
+        for method in ('get', 'head'):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)('/projects/aoe4-autovillager-tool/talk/' + query)
+                self.assertEqual(response.status_code, 308)
+                self.assertEqual(response.location, '/projects/sightflow/talk/' + query)
+
+    def test_sightflow_discussion_includes_legacy_entries_without_rewriting_them(self):
+        with self.app.app_context():
+            author = User.query.filter_by(account_kind='system').one()
+            for slug, body, hidden in (
+                    ('aoe4-autovillager-tool', '# Legacy image automation discussion', False),
+                    ('sightflow', '# New SightFlow discussion', False),
+                    ('aoe4-autovillager-tool', '# Hidden legacy discussion', True),
+                    ('outpost', '# Unrelated discussion', False)):
+                db.session.add(ProjectEntry(project_slug=slug, post=Post(
+                    body=body, author=author, hidden=hidden)))
+            db.session.commit()
+            before = [(entry.post_id, entry.project_slug, entry.post.body, entry.post.author_id)
+                      for entry in ProjectEntry.query.order_by(ProjectEntry.post_id).all()]
+            old_post_id = before[0][0]
+        page = self.client.get('/projects/sightflow/talk/').get_data(as_text=True)
+        self.assertIn('Legacy image automation discussion', page)
+        self.assertIn('New SightFlow discussion', page)
+        self.assertIn('class="feed-total">2 篇</span>', page)
+        self.assertNotIn('Hidden legacy discussion', page)
+        self.assertNotIn('Unrelated discussion', page)
+        detail = self.client.get(f'/post/{old_post_id}').get_data(as_text=True)
+        self.assertIn('SightFlow · 视流自动化 · 项目交流', detail)
+        self.assertIn('/projects/sightflow/talk/', detail)
+        self.assertIn('/works/projects/sightflow/', detail)
+        self.assertNotIn('/works/projects/aoe4-autovillager-tool/', detail)
+        with self.app.app_context():
+            after = [(entry.post_id, entry.project_slug, entry.post.body, entry.post.author_id)
+                     for entry in ProjectEntry.query.order_by(ProjectEntry.post_id).all()]
+            self.assertEqual(before, after)
+
+    def test_legacy_discussion_post_saves_canonical_slug(self):
+        self.join(slug='aoe4-autovillager-tool')
+        response = self.client.post('/projects/aoe4-autovillager-tool/talk/', data={
+            'csrf_token': self.csrf('/projects/sightflow/talk/'),
+            'body': '# Submitted through a previously opened page',
+        })
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            entry = ProjectEntry.query.one()
+            self.assertEqual(entry.project_slug, 'sightflow')
+            self.assertIn('/post/' + str(entry.post_id), response.location)
+
+    def test_unknown_discussion_get_and_authenticated_post_return_not_found(self):
+        self.assertEqual(self.client.get('/projects/unknown/talk/').status_code, 404)
+        self.join()
+        response = self.client.post('/projects/unknown/talk/', data={
+            'csrf_token': self.csrf('/projects/sightflow/talk/'), 'body': 'No unknown projects',
+        })
+        self.assertEqual(response.status_code, 404)
+        with self.app.app_context():
+            self.assertEqual(ProjectEntry.query.count(), 0)
+
     def test_desktop_project_discussions_are_anonymous_read_only_and_preserve_existing_data(self):
         expected = {
             'gomoku': ('Gomoku v3', '五子棋与搜索引擎实验'),

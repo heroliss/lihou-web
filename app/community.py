@@ -71,7 +71,7 @@ PROJECTS = {
     'intelligence-index-cost-linear': ('Intelligence × Cost', 'AI 能力与费用可视化'),
     'china-house-price-map': ('全国房价交互地图', '地图与数据探索'),
     'learnopengl': ('LearnOpenGL', '图形渲染实验'),
-    'aoe4-autovillager-tool': ('AOE4 Flow Editor', '节点式游戏辅助工具'),
+    'sightflow': ('SightFlow · 视流自动化', '图像识别与可视流程自动化'),
     'ga-sort': ('GA-sort', '遗传算法实验'),
     'route-lab': ('Route Lab', '旅行商算法实验室'),
     'sort-lab': ('Sort Lab', '排序算法实验台'),
@@ -83,6 +83,12 @@ PROJECTS = {
     'floydshortestpath': ('FloydShortestPath', 'Unity 寻路算法'),
     'liss-web': ('Liss Community', '写作与交流社区'),
 }
+PROJECT_SLUG_ALIASES = {'aoe4-autovillager-tool': 'sightflow'}
+
+
+def canonical_project_slug(slug):
+    """Keep historical discussion entries readable without rewriting their data."""
+    return PROJECT_SLUG_ALIASES.get(slug, slug)
 
 
 class ProjectEntry(db.Model):
@@ -96,7 +102,8 @@ class ProjectEntry(db.Model):
 @community.app_context_processor
 def project_context():
     from .transactional_mail import email_accounts_enabled
-    return {'project_catalog': PROJECTS, 'email_accounts_enabled': email_accounts_enabled}
+    return {'project_catalog': PROJECTS, 'canonical_project_slug': canonical_project_slug,
+            'email_accounts_enabled': email_accounts_enabled}
 
 
 @community.get('/writing-guide/')
@@ -110,8 +117,12 @@ def writing_guide():
 
 @community.route('/projects/<slug>/talk/', methods=['GET', 'POST'])
 def project_talk(slug):
+    requested_slug = slug
+    slug = canonical_project_slug(slug)
     if slug not in PROJECTS:
         abort(404)
+    if requested_slug != slug and request.method in {'GET', 'HEAD'}:
+        return redirect(_with_request_query(url_for('community.project_talk', slug=slug)), code=308)
     form = PostForm()
     if form.validate_on_submit():
         if not current_user.is_authenticated or not current_user.can(Permission.WRITE_ARTICLES):
@@ -120,7 +131,8 @@ def project_talk(slug):
         db.session.add(ProjectEntry(project_slug=slug, post=post))
         db.session.commit()
         return redirect(url_for('main.post', id=post.id))
-    pagination = Post.query.join(ProjectEntry).filter(ProjectEntry.project_slug == slug, Post.hidden.is_(False)).order_by(
+    related_slugs = [slug] + [old for old, current in PROJECT_SLUG_ALIASES.items() if current == slug]
+    pagination = Post.query.join(ProjectEntry).filter(ProjectEntry.project_slug.in_(related_slugs), Post.hidden.is_(False)).order_by(
         Post.timestamp.desc(), Post.id.desc()).paginate(
             page=request.args.get('page', 1, type=int),
             per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)
