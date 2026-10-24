@@ -9,8 +9,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--settings', type=Path, default=Path.home() / '.config' / 'lihou-web-demo.json')
 parser.add_argument('--data-dir', type=Path, default=Path.home() / 'lihou-demo-data')
 options, commands = parser.parse_known_args()
-if not commands or commands[0] not in {'prepare-public-demo', 'backup-public-demo', 'restore-public-demo', 'publish-writing-guide'}:
-    parser.error('Choose prepare-public-demo, backup-public-demo, restore-public-demo or publish-writing-guide.')
+if not commands or commands[0] not in {'prepare-public-demo', 'backup-public-demo', 'restore-public-demo', 'publish-writing-guide', 'grant-admin'}:
+    parser.error('Choose prepare-public-demo, backup-public-demo, restore-public-demo, publish-writing-guide or grant-admin.')
 settings = json.loads(options.settings.read_text(encoding='utf-8'))
 for name in ('LISS_EMAIL_ACCOUNTS', 'LISS_MAIL_PROVIDER', 'LISS_MAIL_API_KEY',
              'LISS_MAIL_SENDER_EMAIL', 'LISS_MAIL_SENDER_NAME', 'LISS_PUBLIC_BASE_URL',

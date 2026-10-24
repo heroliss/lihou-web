@@ -76,6 +76,8 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(64), unique=True, index=True)
     username = db.Column(db.String(64), unique=True, index=True)
     account_kind = db.Column(db.String(16), nullable=False, default='account', server_default='account')
+    disabled = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    session_version = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     password_hash = db.Column(db.String(256))
     confirmed = db.Column(db.Boolean, default=False)
@@ -157,6 +159,20 @@ class User(UserMixin, db.Model):
         return self.account_kind == 'system'
 
     @property
+    def is_active(self):
+        return not self.disabled
+
+    @property
+    def admin_role_key(self):
+        # A disabled account keeps its stored role, but can() grants no access.
+        permissions = (self.role.permissions or 0) if self.role is not None else 0
+        if permissions & Permission.ADMINISTER:
+            return 'admin'
+        if permissions & Permission.MODERATE_COMMENTS:
+            return 'moderator'
+        return 'normal'
+
+    @property
     def display_name(self):
         if self.is_system and self.username == 'demo' and self.name in {None, '', 'LIHOU'}:
             return 'Liss'
@@ -173,6 +189,13 @@ class User(UserMixin, db.Model):
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    @property
+    def account_credential_fingerprint(self):
+        material = self.password_hash or ''
+        if self.session_version:
+            material += f':version:{self.session_version}'
+        return hashlib.sha256(material.encode()).hexdigest()
+
     def generate_account_token(self, purpose, new_email=None, expiration=None):
         """Public-account actions are scoped and invalidated by credential changes."""
         if purpose not in {'confirm-email', 'reset-password', 'change-email'}:
@@ -181,7 +204,7 @@ class User(UserMixin, db.Model):
                                 else current_app.config.get('LISS_EMAIL_TOKEN_SECONDS', 3600))
         return serializer.dumps({'purpose': purpose, 'uid': self.id,
             'email': self.email, 'new_email': new_email,
-            'credential': hashlib.sha256((self.password_hash or '').encode()).hexdigest()})
+            'credential': self.account_credential_fingerprint})
 
     @staticmethod
     def load_account_token(token, purpose):
@@ -194,9 +217,9 @@ class User(UserMixin, db.Model):
                 or type(data.get('uid')) is not int):
             return None
         user = db.session.get(User, data['uid'])
-        if not user or not user.is_registered or user.email != data.get('email'):
+        if not user or user.disabled or not user.is_registered or user.email != data.get('email'):
             return None
-        fingerprint = hashlib.sha256((user.password_hash or '').encode()).hexdigest()
+        fingerprint = user.account_credential_fingerprint
         if not isinstance(data.get('credential'), str) or not hmac.compare_digest(fingerprint, data['credential']):
             return None
         return user, data
@@ -257,10 +280,15 @@ class User(UserMixin, db.Model):
         return True
 
     def can(self, permissions):
-        return self.role is not None and \
-            (self.role.permissions & permissions) == permissions
+        if (current_app.config.get('PUBLIC_DEMO') and not self.is_registered
+                and permissions & (Permission.ADMINISTER | Permission.MODERATE_COMMENTS)):
+            return False
+        return not self.disabled and self.role is not None and \
+            ((self.role.permissions or 0) & permissions) == permissions
 
     def is_administrator(self):
+        if current_app.config.get('PUBLIC_DEMO') and not self.is_registered:
+            return False
         return self.can(Permission.ADMINISTER)
 
     def ping(self):
@@ -300,7 +328,11 @@ class User(UserMixin, db.Model):
     @property
     def followed_posts(self):
         return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
-            .filter(Follow.follower_id == self.id)
+            .filter(Follow.follower_id == self.id, Post.hidden.is_(False))
+
+    @property
+    def visible_post_count(self):
+        return self.posts.filter(Post.hidden.is_(False)).count()
 
     def to_json(self):
         json_user = {
@@ -348,7 +380,10 @@ login_manager.anonymous_user = AnonymousUser
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except (ValueError, TypeError):
+        return None
 
 
 class Post(db.Model):
@@ -358,7 +393,12 @@ class Post(db.Model):
     body_html = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    hidden = db.Column(db.Boolean, nullable=False, default=False, server_default='0', index=True)
     comments = db.relationship('Comment', backref='post', lazy='dynamic')
+
+    @property
+    def visible_comment_count(self):
+        return self.comments.filter(Comment.disabled.is_not(True)).count()
 
     @staticmethod
     def generate_fake(count=100):
@@ -467,7 +507,7 @@ class Comment(db.Model):
     body = db.Column(db.Text)
     body_html = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=utcnow)
-    disabled = db.Column(db.Boolean)
+    disabled = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
 

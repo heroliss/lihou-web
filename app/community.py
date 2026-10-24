@@ -120,7 +120,7 @@ def project_talk(slug):
         db.session.add(ProjectEntry(project_slug=slug, post=post))
         db.session.commit()
         return redirect(url_for('main.post', id=post.id))
-    pagination = Post.query.join(ProjectEntry).filter(ProjectEntry.project_slug == slug).order_by(
+    pagination = Post.query.join(ProjectEntry).filter(ProjectEntry.project_slug == slug, Post.hidden.is_(False)).order_by(
         Post.timestamp.desc(), Post.id.desc()).paginate(
             page=request.args.get('page', 1, type=int),
             per_page=current_app.config['FLASKY_POSTS_PER_PAGE'], error_out=False)

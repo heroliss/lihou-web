@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "_ui.html" as ui with context %}
+{% import "admin/_macros.html" as admin_ui with context %}
+{% block title %}{{ super() }}网站管理{% endblock %}
+{% block head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}?v=20261024-1">{% endblock %}
+{% block page_content %}
+<div class="admin-layout">
+  <aside class="admin-sidebar" aria-label="网站管理导航">
+    <a class="admin-home" href="{{ url_for('admin.index') }}">{{ ui.icon('shield') }}<span>网站管理</span></a>
+    <nav class="admin-nav" aria-label="管理功能">
+      {% for endpoint, label, icon in [('index','概览','grid'),('posts','文章','book'),('comments','评论','comment'),('users','用户','users'),('settings','网站设置','settings'),('audit','操作记录','history')] %}
+      <a href="{{ url_for('admin.' ~ endpoint) }}"{% if admin_section|default('') == endpoint %} class="is-active" aria-current="page"{% endif %}>{{ ui.icon(icon) }}<span>{{ label }}</span></a>
+      {% endfor %}
+    </nav>
+    <a class="admin-return" href="{{ url_for('main.index') }}">{{ ui.icon('back') }}返回社区</a>
+  </aside>
+  <section class="admin-main" aria-label="{% block admin_label %}管理内容{% endblock %}">
+    {% block admin_content %}{% endblock %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}{{ super() }}<script src="{{ url_for('static', filename='admin.js') }}?v=20261024-1" defer></script>{% endblock %}

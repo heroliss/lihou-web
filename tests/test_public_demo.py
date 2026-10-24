@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 from app import create_app, db
 from app.models import Comment, Post, User
+from app.admin import SiteSettings
 
 
 class PublicDemoTests(unittest.TestCase):
@@ -144,7 +145,9 @@ class PublicDemoTests(unittest.TestCase):
 
     def test_article_and_comment_quotas_and_body_limits(self):
         self.start()
-        self.app.config['PUBLIC_DEMO_MAX_POSTS'] = 1
+        with self.app.app_context():
+            db.session.get(SiteSettings, 1).guest_post_limit = 1
+            db.session.commit()
         self.app.config['PUBLIC_DEMO_MAX_COMMENTS'] = 1
         self.assertEqual(self.submit('/', {'body': 'One article'}).status_code, 302)
         self.assertEqual(self.submit('/', {'body': 'Another article'}).status_code, 429)
@@ -513,7 +516,9 @@ class PublicDemoTests(unittest.TestCase):
 
     def test_guest_and_account_have_ordinary_permissions_with_different_quotas(self):
         uid = self.start()
-        self.app.config['PUBLIC_DEMO_MAX_POSTS'] = 1
+        with self.app.app_context():
+            db.session.get(SiteSettings, 1).guest_post_limit = 1
+            db.session.commit()
         self.submit('/', {'body': 'First visitor post'})
         self.assertEqual(self.submit('/', {'body': 'Visitor limit'}).status_code, 429)
         self.register()

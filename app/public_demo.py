@@ -78,11 +78,14 @@ class Sandbox:
     def prepare(self):
         self._assert_database()
         if not self.initialized:
-            from .public_schema import migrate_account_kinds
+            from .public_schema import migrate_account_kinds, migrate_admin_schema
             migrate_account_kinds(db.engine.url.database)
+            migrate_admin_schema(db.engine.url.database)
             # create_all / sample seeding only add missing tables and samples.
             # Invalid databases fail instead of being deleted or recreated.
             seed_sample_content(password=secrets.token_urlsafe(48), public=True)
+            from .admin import initialize_settings
+            initialize_settings()
             db.session.execute(text('CREATE TABLE IF NOT EXISTS public_demo_state '
                                     '(id INTEGER PRIMARY KEY CHECK (id=1), '
                                     'identity_epoch TEXT NOT NULL, created_at REAL NOT NULL)'))
@@ -158,6 +161,7 @@ class Sandbox:
     @staticmethod
     def participant():
         return (current_user.is_authenticated
+                and not current_user.disabled
                 and str(current_user.id) == session.get('public_demo_uid')
                 and current_user.account_kind in {'guest', 'account'})
 
@@ -172,6 +176,9 @@ class Sandbox:
         # awaits confirmation. Other unconfirmed-account limits stay unchanged.
         registered = current_user.is_registered and (suffix == 'MAX_POSTS' or current_user.confirmed)
         prefix = 'PUBLIC_ACCOUNT_' if registered else 'PUBLIC_DEMO_'
+        if prefix == 'PUBLIC_DEMO_' and suffix == 'MAX_POSTS':
+            from .admin import settings_values
+            return settings_values()['guest_post_limit']
         return self.app.config[prefix + suffix]
 
     def limit_mail(self, email):
@@ -218,6 +225,14 @@ class Sandbox:
         from .public_accounts import validate_identity_session
         validate_identity_session()
         endpoint = request.endpoint or ''
+        if endpoint.startswith('admin.'):
+            from .admin import is_console_admin
+            if not is_console_admin():
+                abort(403, description='此页面仅对站点管理员开放。')
+            if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+                self.limit('write')
+                self.check_storage()
+            return  # Global CSRFProtect still validates every management POST.
         if endpoint.startswith('api.'):
             abort(403, description='此站点暂不开放公共 API。')
         if endpoint.startswith('auth.') and endpoint not in {
@@ -273,6 +288,9 @@ class Sandbox:
         if endpoint == 'main.edit_profile' and len(request.form.get('about_me', '')) > self.quota('MAX_PROFILE_BODY'):
             abort(413, description=f'个人简介请控制在 {self.quota("MAX_PROFILE_BODY")} 字以内。')
         if endpoint in {'main.index', 'community.project_talk'}:
+            from .admin import settings_values
+            if current_user.is_visitor and not settings_values()['guest_posting_open']:
+                abort(403, description='站点暂时关闭访客发文，评论与已有文章编辑仍可使用。')
             maximum = self.quota('MAX_POSTS')
             if maximum is not None and current_user.posts.count() >= maximum:
                 description = (f'访客最多发布 {maximum} 篇文章。创建账号后不限篇数，已有文章仍可编辑。'
@@ -301,6 +319,8 @@ def entry():
         return redirect(destination())
     form = EntryForm()
     if form.validate_on_submit():
+        if session.get('disabled_identity'):
+            abort(403, description='这个身份已被暂停使用，请联系站点管理员。')
         sandbox.check_identity_capacity()
         token = secrets.token_hex(8)
         while User.query.filter_by(username=f'guest_{token[:6]}').first() is not None:

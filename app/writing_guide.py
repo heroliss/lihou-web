@@ -46,7 +46,7 @@ def get_published_writing_guide():
     with db.session.no_autoflush:
         record = db.session.get(WritingGuidePublication, GUIDE_KEY)
         post = db.session.get(Post, record.post_id) if record is not None else None
-        if (post is None or post.author is None or post.author.username != 'demo'
+        if (post is None or post.hidden or post.author is None or post.author.username != 'demo'
                 or not post.author.is_system
                 or post.author.email not in {'demo@example.com', 'demo@example.invalid'}):
             return None

@@ -51,7 +51,7 @@ def index():
     if show_followed:
         query = current_user.followed_posts
     else:
-        query = Post.query
+        query = Post.query.filter_by(hidden=False)
     pagination = query.order_by(Post.timestamp.desc()).paginate(
         page=page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
@@ -64,7 +64,7 @@ def index():
 def user(username):
     user = User.query.filter_by(username=username).first_or_404()
     page = request.args.get('page', 1, type=int)
-    pagination = user.posts.order_by(Post.timestamp.desc()).paginate(
+    pagination = user.posts.filter_by(hidden=False).order_by(Post.timestamp.desc()).paginate(
         page=page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
         error_out=False)
     posts = pagination.items
@@ -120,7 +120,7 @@ def edit_profile_admin(id):
 
 @main.route('/post/<int:id>', methods=['GET', 'POST'])
 def post(id):
-    post = db.get_or_404(Post, id)
+    post = Post.query.filter_by(id=id, hidden=False).first_or_404()
     form = CommentForm()
     if form.validate_on_submit():
         if not current_user.is_authenticated or not current_user.can(Permission.COMMENT):
@@ -134,9 +134,9 @@ def post(id):
         return redirect(url_for('.post', id=post.id, page=-1))
     page = request.args.get('page', 1, type=int)
     if page == -1:
-        page = (post.comments.count() - 1) // \
+        page = (post.comments.filter(Comment.disabled.is_not(True)).count() - 1) // \
                current_app.config['FLASKY_COMMENTS_PER_PAGE'] + 1
-    pagination = post.comments.order_by(Comment.timestamp.asc()).paginate(
+    pagination = post.comments.filter(Comment.disabled.is_not(True)).order_by(Comment.timestamp.asc()).paginate(
         page=page, per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'],
         error_out=False)
     comments = pagination.items
@@ -147,7 +147,7 @@ def post(id):
 @main.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit(id):
-    post = db.get_or_404(Post, id)
+    post = Post.query.filter_by(id=id, hidden=False).first_or_404()
     if current_user != post.author and \
             not current_user.can(Permission.ADMINISTER):
         abort(403)

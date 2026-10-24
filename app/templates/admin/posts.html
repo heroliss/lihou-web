@@ -1,0 +1,14 @@
+{% extends "admin/base.html" %}
+{% block admin_label %}文章管理{% endblock %}
+{% block admin_content %}
+<header class="admin-heading"><div><h1>文章</h1><p>预览内容、调整公开状态。隐藏的文章和评论仍会保留。</p></div></header>
+<form method="get" class="admin-toolbar" role="search"><label class="admin-search">搜索文章<input name="q" value="{{ q }}" placeholder="内容、作者或文章编号" type="search" maxlength="160"></label><label>显示状态<select name="status"><option value="all"{% if status == 'all' %} selected{% endif %}>全部状态</option><option value="visible"{% if status == 'visible' %} selected{% endif %}>公开</option><option value="hidden"{% if status == 'hidden' %} selected{% endif %}>已隐藏</option></select></label><button class="button button-small" type="submit">查找</button>{% if q or status not in ['all', ''] %}<a class="admin-clear" href="{{ url_for('admin.posts') }}">清除筛选</a>{% endif %}</form>
+<p class="admin-list-summary"><span>共 <strong>{{ pagination.total }}</strong> 篇文章</span><span>最新发布在前</span></p>
+{% if pagination.items %}<div class="admin-content-list">{% for post in pagination.items %}<article class="admin-content-row">
+  <div class="admin-row-heading"><h2>{% if not post.hidden %}<a href="{{ url_for('main.post', id=post.id) }}" target="_blank" rel="noopener">{% endif %}{{ (post.body_html or post.body or '')|striptags|truncate(86, true) or '无正文文章' }}{% if not post.hidden %}<span class="sr-only">（新窗口）</span></a>{% endif %}</h2>{{ admin_ui.status(post.hidden) }}</div>
+  <div class="admin-row-meta"><span>#{{ post.id }}</span><a href="{{ url_for('main.user', username=post.author.username) }}">{{ ui.author_name(post.author) }}</a>{{ ui.identity_badge(post.author) }}{{ admin_ui.date(post.timestamp) }}<span>{{ post.comments.count() }} 条评论</span></div>
+  <div class="admin-row-actions">{{ admin_ui.preview_button('post', 'restore' if post.hidden else 'hide', post.id, '恢复公开' if post.hidden else '隐藏文章', request.full_path) }}{% if not post.hidden %}<a class="button button-small button-secondary" href="{{ url_for('main.edit', id=post.id) }}">编辑文章</a>{% endif %}<a class="button button-small button-secondary" href="{{ url_for('admin.comments', q='#' ~ post.id) }}">查看评论</a></div>
+  <details class="admin-preview"><summary>预览全文</summary><div class="admin-preview-body post-body">{{ post.body_html|safe if post.body_html else post.body }}</div></details>
+</article>{% endfor %}</div>{% else %}{{ admin_ui.empty() }}{% endif %}
+{{ admin_ui.pagination(pagination, 'admin.posts', q=q, status=status) }}
+{% endblock %}

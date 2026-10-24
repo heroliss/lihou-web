@@ -1,0 +1,20 @@
+{% extends "admin/base.html" %}
+{% block admin_label %}网站设置{% endblock %}
+{% block admin_content %}
+<header class="admin-heading"><div><h1>网站设置</h1><p>让社区有自己的介绍，并设置加入与写作方式。</p></div></header>
+{% set values = values|default(site_settings, true) %}{% set errors = errors|default({}) %}
+<form method="post" action="{{ url_for('admin.preview') }}" class="site-form admin-settings-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="kind" value="settings"><input type="hidden" name="action" value="update"><input type="hidden" name="return_to" value="{{ url_for('admin.settings') }}">
+  {% if errors.get('_form') %}<div class="admin-error-box" role="alert">{% for error in errors['_form'] %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+  <fieldset class="admin-settings-section"><legend>站点介绍</legend>
+    <div class="form-group"><label for="site_name">网站名称</label><input class="form-control" id="site_name" name="site_name" value="{{ values.site_name }}" maxlength="60" required aria-invalid="{{ 'true' if errors.get('site_name') else 'false' }}"><p class="field-help">显示在浏览器标题与网站导航中。</p>{{ admin_ui.field_errors(errors, 'site_name') }}</div>
+    <div class="form-group"><label for="tagline">网站简介</label><input class="form-control" id="tagline" name="tagline" value="{{ values.tagline }}" maxlength="160" aria-invalid="{{ 'true' if errors.get('tagline') else 'false' }}"><p class="field-help">用一句话介绍这里，显示在首页与网站页脚。</p>{{ admin_ui.field_errors(errors, 'tagline') }}</div>
+    <div class="form-group"><label for="welcome">欢迎语</label><textarea class="form-control" id="welcome" name="welcome" rows="4" maxlength="500" aria-invalid="{{ 'true' if errors.get('welcome') else 'false' }}">{{ values.welcome }}</textarea><p class="field-help">显示在首页侧栏，适合写下社区的欢迎与介绍。</p>{{ admin_ui.field_errors(errors, 'welcome') }}</div>
+  </fieldset>
+  <fieldset class="admin-settings-section"><legend>加入与写作</legend>
+    <div class="form-group"><label for="registration_open">账号注册</label><select class="form-control" id="registration_open" name="registration_open"><option value="1"{% if values.registration_open in [true, '1', 1] %} selected{% endif %}>开放注册</option><option value="0"{% if values.registration_open in [false, '0', 0] %} selected{% endif %}>暂停注册</option></select><p class="field-help">暂停后，已有账号仍可以登录使用。</p>{{ admin_ui.field_errors(errors, 'registration_open') }}</div>
+    <div class="form-group"><label for="guest_posting_open">访客发文</label><select class="form-control" id="guest_posting_open" name="guest_posting_open"><option value="1"{% if values.guest_posting_open in [true, '1', 1] %} selected{% endif %}>允许访客发布文章</option><option value="0"{% if values.guest_posting_open in [false, '0', 0] %} selected{% endif %}>暂停访客发文</option></select><p class="field-help">访客文章与项目讨论合并计数，注册账号不限篇数。</p>{{ admin_ui.field_errors(errors, 'guest_posting_open') }}</div>
+    <div class="form-group admin-narrow-field"><label for="guest_post_limit">每位访客的文章上限</label><input class="form-control" id="guest_post_limit" name="guest_post_limit" type="number" min="1" max="100" step="1" value="{{ values.guest_post_limit }}" required aria-invalid="{{ 'true' if errors.get('guest_post_limit') else 'false' }}">{{ admin_ui.field_errors(errors, 'guest_post_limit') }}</div>
+  </fieldset>
+  <div class="form-actions"><button type="submit" class="button">预览并保存设置</button><span class="admin-settings-saved">下一步确认更改</span></div>
+</form>
+{% endblock %}

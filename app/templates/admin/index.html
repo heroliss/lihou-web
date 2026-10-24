@@ -1,0 +1,18 @@
+{% extends "admin/base.html" %}
+{% block admin_label %}管理概览{% endblock %}
+{% block admin_content %}
+<header class="admin-heading"><div><h1>概览</h1><p>你好，{{ ui.author_name(current_user) }}。这里是社区的内容与设置中心。</p></div><a class="button button-small button-secondary" href="{{ url_for('main.index') }}">查看社区 {{ ui.icon('arrow') }}</a></header>
+<div class="admin-stats" aria-label="社区数据">
+  <a href="{{ url_for('admin.posts') }}"><span>文章</span><strong>{{ stats.posts }}</strong><small>{{ stats.hidden_posts }} 篇已隐藏</small></a>
+  <a href="{{ url_for('admin.comments') }}"><span>评论</span><strong>{{ stats.comments }}</strong><small>{{ stats.hidden_comments }} 条已隐藏</small></a>
+  <a href="{{ url_for('admin.users') }}"><span>用户</span><strong>{{ stats.users }}</strong><small>{{ stats.registered_users }} 账号 · {{ stats.guests }} 访客 · {{ stats.admins }} 位有效管理员</small></a>
+  <a href="{{ url_for('admin.users', status='disabled') }}"><span>已停用用户</span><strong>{{ stats.disabled_users }}</strong><small>保留内容与账号</small></a>
+</div>
+<section class="admin-section" aria-labelledby="quick-heading"><div class="admin-section-head"><h2 id="quick-heading">常用管理</h2></div><div class="admin-quicklinks">
+  <a href="{{ url_for('admin.posts') }}">{{ ui.icon('book') }}<span><strong>整理文章</strong><small>查找、预览与管理文章显示</small></span>{{ ui.icon('arrow') }}</a>
+  <a href="{{ url_for('admin.comments') }}">{{ ui.icon('comment') }}<span><strong>查看讨论</strong><small>结合文章上下文管理评论</small></span>{{ ui.icon('arrow') }}</a>
+  <a href="{{ url_for('admin.users') }}">{{ ui.icon('users') }}<span><strong>管理用户</strong><small>调整角色与账号状态</small></span>{{ ui.icon('arrow') }}</a>
+  <a href="{{ url_for('admin.settings') }}">{{ ui.icon('settings') }}<span><strong>网站设置</strong><small>站点介绍、注册与访客写作</small></span>{{ ui.icon('arrow') }}</a>
+</div></section>
+<section class="admin-section" aria-labelledby="activity-heading"><div class="admin-section-head"><h2 id="activity-heading">最近操作</h2><a href="{{ url_for('admin.audit') }}">全部记录 {{ ui.icon('arrow') }}</a></div>{{ admin_ui.activity(recent_audit) }}</section>
+{% endblock %}

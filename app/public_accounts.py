@@ -2,7 +2,7 @@
 import hashlib
 import hmac
 
-from flask import current_app, flash, redirect, render_template, request, session, url_for
+from flask import abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_user, logout_user
 from flask_wtf import FlaskForm
 from sqlalchemy import func, or_
@@ -21,7 +21,10 @@ class ConfirmationForm(FlaskForm):
 
 
 def _identity_stamp(user):
-    credential = f'public-account:{user.id}:{user.password_hash or ""}'.encode('utf-8')
+    credential = f'public-account:{user.id}:{user.password_hash or ""}'
+    if user.session_version:
+        credential += f':version:{user.session_version}'
+    credential = credential.encode('utf-8')
     return hmac.new(current_app.config['SECRET_KEY'].encode('utf-8'),
                     credential, hashlib.sha256).hexdigest()
 
@@ -38,7 +41,26 @@ def validate_identity_session():
     Visitors retain their historical cookie contract. Legacy password accounts
     without a stamp sign in once to establish the new credential binding.
     """
-    if not current_user.is_authenticated or not current_user.is_registered:
+    # Inactive UserMixin identities report is_authenticated=False too. Inspect
+    # the loaded identity before that shortcut so suspension clears old cookies.
+    if current_user.is_anonymous:
+        return
+    if current_user.disabled:
+        epoch = current_app.extensions['public_demo'].epoch
+        uid = current_user.id
+        logout_user()
+        session.clear()
+        session['public_demo_epoch'] = epoch
+        session['disabled_identity'] = uid
+        flash('这个身份已被暂停使用。如需恢复，请联系站点管理员。')
+        return
+    if not current_user.is_registered:
+        if session.get('public_guest_version', 0) != current_user.session_version:
+            epoch = current_app.extensions['public_demo'].epoch
+            logout_user()
+            session.clear()
+            session['public_demo_epoch'] = epoch
+            flash('登录状态已更新，请重新加入。原有内容仍然保留。')
         return
     saved = session.get('public_account_credential')
     if isinstance(saved, str) and hmac.compare_digest(saved.encode('utf-8'),
@@ -57,6 +79,8 @@ def establish_identity(user):
     session.clear()
     session['public_demo_epoch'] = sandbox.epoch
     session['public_demo_uid'] = str(user.id)
+    if user.is_visitor:
+        session['public_guest_version'] = user.session_version
     session.permanent = True
     login_user(user, remember=False)
     refresh_identity_session(user)
@@ -94,7 +118,7 @@ def login():
         user = User.query.filter(or_(func.lower(User.username) == identifier,
                                      func.lower(User.email) == identifier),
                                  User.account_kind == 'account').first()
-        if user is not None and user.verify_password(form.password.data):
+        if user is not None and not user.disabled and user.verify_password(form.password.data):
             establish_identity(user)
             if user.email and not user.confirmed:
                 flash('邮箱尚未确认。你仍可继续浏览和保留自己的内容。')
@@ -105,6 +129,11 @@ def login():
 
 
 def register():
+    from .admin import settings_values
+    if not settings_values()['registration_open']:
+        abort(403, description='站点暂时关闭新账号注册；已有账号仍可正常登录。')
+    if session.get('disabled_identity'):
+        abort(403, description='这个身份已被暂停使用，请联系站点管理员。')
     if current_user.is_authenticated and current_user.is_registered:
         return redirect(url_for('main.index'))
     sandbox = current_app.extensions['public_demo']

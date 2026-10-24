@@ -1,0 +1,19 @@
+{% import "_ui.html" as ui with context %}
+{% macro status(hidden) -%}<span class="admin-status{% if hidden %} is-muted{% else %} is-positive{% endif %}">{{ '已隐藏' if hidden else '公开' }}</span>{%- endmacro %}
+{% macro date(value) -%}{% if value %}<time datetime="{{ value.isoformat() }}Z">{{ value.strftime('%Y-%m-%d %H:%M') }}</time>{% else %}—{% endif %}{%- endmacro %}
+{% macro empty(title='没有匹配的内容', text='试试其他关键词，或清除筛选条件。') -%}<div class="admin-empty">{{ ui.icon('search') }}<h2>{{ title }}</h2><p>{{ text }}</p></div>{%- endmacro %}
+{% macro field_errors(errors, name) -%}{% set value = errors.get(name) %}{% if value %}{% if value is string %}<p class="field-error" role="alert">{{ value }}</p>{% else %}{% for error in value %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}{% endif %}{% endif %}{%- endmacro %}
+{% macro preview_button(kind, action, target_id, label, return_to, class_name='') -%}
+<form method="post" action="{{ url_for('admin.preview') }}" class="admin-inline-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="action" value="{{ action }}"><input type="hidden" name="target_id" value="{{ target_id }}">
+  <input type="hidden" name="return_to" value="{{ return_to }}">
+  <button class="button button-small button-secondary {{ class_name }}" type="submit">{{ label }}</button>
+</form>
+{%- endmacro %}
+{% macro pagination(p, endpoint) -%}
+{% if p and p.pages > 1 %}<nav class="admin-pagination" aria-label="管理列表分页"><span>第 {{ p.page }} / {{ p.pages }} 页，共 {{ p.total }} 项</span><div>{% if p.has_prev %}<a class="button button-small button-secondary" rel="prev" href="{{ url_for(endpoint, page=p.prev_num, **kwargs) }}">上一页</a>{% endif %}{% if p.has_next %}<a class="button button-small button-secondary" rel="next" href="{{ url_for(endpoint, page=p.next_num, **kwargs) }}">下一页</a>{% endif %}</div></nav>{% endif %}
+{%- endmacro %}
+{% macro activity(entries) -%}
+<ol class="admin-activity">{% for entry in entries %}<li><span class="admin-activity-mark" aria-hidden="true">{{ ui.icon('check') }}</span><div><p>{{ entry.action_label }}{% if entry.target_type != 'settings' %}<span class="admin-activity-target"> · {{ entry.target_label }}</span>{% endif %}</p><small>{{ '站点维护' if entry.actor_name == '服务器 CLI' else entry.actor_name }}<span>·</span>{{ date(entry.created_at) }}</small></div></li>{% else %}<li class="admin-activity-empty"><p>还没有管理操作记录。</p></li>{% endfor %}</ol>
+{%- endmacro %}

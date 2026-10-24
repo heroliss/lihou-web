@@ -2,26 +2,28 @@
 {% import "_forms.html" as forms with context %}
 {% import "_macros.html" as macros %}
 {% import "_ui.html" as ui with context %}
+{% set registration_open = (site_settings|default({})).get('registration_open', true) %}
+{% set guest_posting_open = (site_settings|default({})).get('guest_posting_open', true) %}
 {% block title %}{{ super() }}文章{% endblock %}
 {% block page_content %}
 <div class="community-layout">
 <div class="feed-column">
-  <header class="feed-intro"><h1>想法在这里相遇。</h1><p>记录日常，分享发现，和有趣的人聊一聊。</p></header>
-  {% if current_user.can(Permission.WRITE_ARTICLES) %}
+  <header class="feed-intro"><h1>想法在这里相遇。</h1><p class="site-configured-tagline">{{ (site_settings|default({})).get('tagline', '记录日常，分享发现，和有趣的人聊一聊。') }}</p></header>
+  {% if current_user.can(Permission.WRITE_ARTICLES) and (not current_user.is_visitor|default(false) or guest_posting_open) %}
   <details class="composer" id="write"{% if form.body.errors %} open{% endif %}>
     <summary>{{ ui.avatar(current_user, 'avatar-small') }}<span>今天有什么想分享？<small>写一篇文章</small></span>{{ ui.icon('edit') }}</summary>
     <div class="composer-content">{{ forms.render_form(form, '发布文章', 'writing-form') }}</div>
   </details>
-  {% endif %}
+  {% elif current_user.is_authenticated and current_user.is_visitor|default(false) and not guest_posting_open %}<p class="form-notice" id="write">访客发文暂时关闭，仍可发表评论、编辑已有文章。</p>{% endif %}
   <div class="feed-toolbar"><nav class="feed-tabs" aria-label="文章时间线"><a{% if not show_followed %} class="is-active" aria-current="page"{% endif %} href="{{ url_for('main.show_all') if current_user.is_authenticated else url_for('main.index') }}">最新文章</a>{% if current_user.is_authenticated %}<a{% if show_followed %} class="is-active" aria-current="page"{% endif %} href="{{ url_for('main.show_followed') }}">我的关注</a>{% endif %}</nav><span class="feed-total">{{ pagination.total if pagination else posts|length }} 篇文章</span></div>
   {% include '_posts.html' %}
   {% if not posts %}{{ ui.empty_state('还没有文章', '先写下一点想法，或关注一位作者，开启这里的第一段对话。' if show_followed else '从一个想法开始，第一篇文章也可以很短。') }}{% endif %}
   {% if pagination %}{{ macros.pagination_widget(pagination, 'main.index') }}{% endif %}
 </div>
 <aside class="community-aside" aria-label="关于与个人入口">
-  <section class="aside-about"><h2>一个写作与交流的小地方。</h2><p>LISS 欢迎认真记录，也欢迎随手分享。一个问题、一段经历、一点新发现，都值得留下。</p><a class="quiet-link" href="{{ url_for('main.user', username='demo') }}">认识站点作者 {{ ui.icon('arrow') }}</a></section>
-  {% if not current_user.is_authenticated %}<section class="aside-join"><h2>从写下第一句开始</h2><p>无需注册，也可以发布文章、参与讨论。</p><a class="button" href="{{ url_for('public_demo.entry') if config.get('PUBLIC_DEMO') else url_for('auth.register') }}">开始写作 {{ ui.icon('edit') }}</a><p class="aside-account">已有账号？<a href="{{ url_for('auth.login') }}">登录</a></p></section>
-  {% else %}<section class="aside-profile"><a class="aside-person" href="{{ url_for('main.user', username=current_user.username) }}">{{ ui.avatar(current_user) }}<span><strong>{{ ui.author_name(current_user) }}</strong>{{ ui.identity_badge(current_user) }}</span></a><p>{{ current_user.about_me or '在这里记录自己的想法。' }}</p><a class="quiet-link" href="{{ url_for('main.user', username=current_user.username) }}">我的主页 {{ ui.icon('arrow') }}</a>{% if current_user.is_visitor|default(false) %}<a class="identity-upgrade" href="{{ url_for('auth.register') }}">设置账号，保留这个身份 {{ ui.icon('lock') }}</a>{% endif %}</section>{% endif %}
+  <section class="aside-about"><h2>一个写作与交流的小地方。</h2><p>{{ (site_settings|default({})).get('welcome', 'LISS 欢迎认真记录，也欢迎随手分享。一个问题、一段经历、一点新发现，都值得留下。') }}</p><a class="quiet-link" href="{{ url_for('main.user', username='demo') }}">认识站点作者 {{ ui.icon('arrow') }}</a></section>
+  {% if not current_user.is_authenticated %}<section class="aside-join"><h2>从写下第一句开始</h2><p>{{ '无需注册，也可以发布文章、参与讨论。' if guest_posting_open else '先以访客身份加入，在评论中交流想法。访客发文暂时关闭。' }}</p><a class="button" href="{{ url_for('public_demo.entry') if config.get('PUBLIC_DEMO') else url_for('auth.register') }}">{{ '开始写作' if guest_posting_open else '加入交流' }} {{ ui.icon('edit') }}</a><p class="aside-account">已有账号？<a href="{{ url_for('auth.login') }}">登录</a></p></section>
+  {% else %}<section class="aside-profile"><a class="aside-person" href="{{ url_for('main.user', username=current_user.username) }}">{{ ui.avatar(current_user) }}<span><strong>{{ ui.author_name(current_user) }}</strong>{{ ui.identity_badge(current_user) }}</span></a><p>{{ current_user.about_me or '在这里记录自己的想法。' }}</p><a class="quiet-link" href="{{ url_for('main.user', username=current_user.username) }}">我的主页 {{ ui.icon('arrow') }}</a>{% if current_user.is_visitor|default(false) and registration_open %}<a class="identity-upgrade" href="{{ url_for('auth.register') }}">设置账号，保留这个身份 {{ ui.icon('lock') }}</a>{% endif %}</section>{% endif %}
   <section class="aside-note"><h2>让交流更轻松</h2><p>友善表达，尊重不同的声音。发布前，请确认内容适合公开分享。</p></section>
   <section class="aside-note"><h2>从作品开始一段对话</h2><p>游戏、工具、AI 与交互实验。体验作品，再聊聊你的发现。</p><a class="quiet-link" href="{{ url_for('community.portfolio', path='projects/') }}">探索全部作品 {{ ui.icon('arrow') }}</a></section>
 </aside>

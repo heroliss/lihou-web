@@ -1,43 +1,46 @@
 {% extends "bootstrap/base.html" %}
 {% import "_ui.html" as ui with context %}
+{% set registration_open = (site_settings|default({})).get('registration_open', true) %}
+{% set guest_posting_open = (site_settings|default({})).get('guest_posting_open', true) %}
 {% block html_attribs %} lang="zh-CN" data-theme="dark"{% endblock %}
-{% block title %}Liss Community · {% endblock %}
+{% block title %}{{ (site_settings|default({})).get('site_name', 'Liss Community') }} · {% endblock %}
 {% block head %}
 {{ super() }}
 <meta name="theme-color" content="#0e151e" id="theme-color">
-<meta name="description" content="Liss Community，记录与交流的小地方。探索 Liss 的作品，分享想法，让对话继续。">
+<meta name="description" content="{{ (site_settings|default({})).get('tagline', '记录与交流的小地方。探索 Liss 的作品，分享想法，让对话继续。') }}">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 <script>try{var t=localStorage.getItem('liss-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 {% if request.endpoint in ['main.index', 'main.edit', 'community.project_talk'] and current_user.is_authenticated %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/easymde-2.21.0/easymde.min.css') }}">
 {% endif %}
-<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-5">
+<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-6">
 {% endblock %}
 {% block navbar %}
 <a class="skip-link" href="#main-content">跳到正文</a>
 <header class="site-header"><nav class="site-nav page-shell" aria-label="主导航">
-  <a class="wordmark" href="{{ url_for('main.index') }}" aria-label="Liss Community 首页">LISS<span class="brand-dot" aria-hidden="true"></span><small class="brand-community">社区</small></a>
+  {% set public_site_name = (site_settings|default({})).get('site_name', 'Liss Community') %}
+  <a class="wordmark{% if public_site_name != 'Liss Community' %} site-custom-wordmark{% endif %}" href="{{ url_for('main.index') }}" aria-label="{{ public_site_name }} 首页" title="{{ public_site_name }}">{% if public_site_name == 'Liss Community' %}LISS{% else %}<span class="site-wordmark-text">{{ public_site_name }}</span>{% endif %}<span class="brand-dot" aria-hidden="true"></span><small class="brand-community">社区</small></a>
   <a class="nav-feed{% if request.endpoint in ['main.index','main.show_all','main.show_followed'] %} is-active{% endif %}" href="{{ url_for('main.index') }}">文章</a>
   <a class="nav-works" href="{{ url_for('community.portfolio') }}">作品</a>
   <div class="nav-actions">
     <button class="icon-button theme-toggle" type="button" data-theme-toggle aria-label="切换为浅色主题" title="切换主题">{{ ui.icon('sun', 'theme-sun') }}{{ ui.icon('moon', 'theme-moon') }}</button>
     {% if current_user.is_authenticated %}
-    <a class="button button-small nav-write" href="{{ url_for('main.index') }}#write" aria-label="写文章">{{ ui.icon('edit') }}<span>写文章</span></a>
+    {% if not current_user.is_visitor|default(false) or guest_posting_open %}<a class="button button-small nav-write" href="{{ url_for('main.index') }}#write" aria-label="写文章">{{ ui.icon('edit') }}<span>写文章</span></a>{% endif %}
     <details class="account-menu"><summary aria-label="账户菜单">{{ ui.avatar(current_user, 'avatar-small') }}<span class="account-name">{{ ui.author_name(current_user) }}</span>{{ ui.icon('chevron') }}</summary>
       <div class="account-dropdown"><p>{{ ui.author_name(current_user) }} {{ ui.identity_badge(current_user) }}</p>
         <a href="{{ url_for('main.user', username=current_user.username) }}">{{ ui.icon('user') }}我的主页</a>
         <a href="{{ url_for('main.edit_profile') }}">{{ ui.icon('settings') }}编辑资料</a>
-        {% if current_user.is_visitor|default(false) %}<a href="{{ url_for('auth.register') }}">{{ ui.icon('lock') }}保留为正式账号</a>
+        {% if current_user.is_visitor|default(false) %}{% if registration_open %}<a href="{{ url_for('auth.register') }}">{{ ui.icon('lock') }}保留为正式账号</a>{% endif %}
         {% else %}<a href="{{ url_for('auth.change_password') }}">{{ ui.icon('lock') }}修改密码</a>{% endif %}
         {% if not config.get('PUBLIC_DEMO') %}<a href="{{ url_for('auth.change_email_request') }}">修改邮箱</a>{% endif %}
         {% if config.get('PUBLIC_DEMO') and current_user.is_registered %}<a href="{{ url_for('auth.unconfirmed') }}">{{ ui.icon('lock') }}邮箱与账号</a>{% endif %}
-        {% if current_user.can(Permission.MODERATE_COMMENTS) %}<a href="{{ url_for('main.moderate') }}">管理评论</a>{% endif %}
+        {% if config.get('PUBLIC_DEMO') and current_user.is_administrator() %}<a href="{{ url_for('admin.index') }}">{{ ui.icon('shield') }}网站管理</a>{% elif current_user.can(Permission.MODERATE_COMMENTS) and not config.get('PUBLIC_DEMO') %}<a href="{{ url_for('main.moderate') }}">管理评论</a>{% endif %}
         {% if config.get('PUBLIC_DEMO') %}<form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit">退出当前身份</button></form>{% if current_user.is_visitor|default(false) %}<p class="logout-note">内容仍会保留。退出前，建议先设置账号。</p>{% endif %}{% else %}<a href="{{ url_for('auth.logout') }}">退出当前身份</a>{% endif %}
       </div>
     </details>
     {% else %}
     <a class="nav-login" href="{{ url_for('auth.login') }}">登录</a>
-    <a class="button button-small" href="{{ url_for('public_demo.entry') if config.get('PUBLIC_DEMO') else url_for('auth.register') }}">开始写作</a>
+    <a class="button button-small" href="{{ url_for('public_demo.entry') if config.get('PUBLIC_DEMO') else url_for('auth.register') }}">{{ '开始写作' if guest_posting_open else '加入交流' }}</a>
     {% endif %}
   </div>
 </nav></header>
@@ -48,7 +51,7 @@
   {% if config.get('PUBLIC_DEMO') and current_user.is_authenticated and current_user.is_registered and current_user.email and not current_user.confirmed %}<div class="email-status" role="status"><p>邮箱尚未确认。你仍可以继续写作和交流。</p><a href="{{ url_for('auth.unconfirmed') }}">确认邮箱 {{ ui.icon('arrow') }}</a></div>{% endif %}
   {% block page_content %}{% endblock %}
 </main>
-<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>Community</span></a><p>记录想法，分享发现，让对话继续。</p><a href="{{ url_for('community.writing_guide') }}" class="footer-top">发文指南</a><a href="{{ url_for('community.portfolio') }}" class="footer-top">探索作品 {{ ui.icon('arrow') }}</a><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
+<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand site-name-brand">{{ (site_settings|default({})).get('site_name', 'Liss Community') }}</a><p class="site-configured-tagline">{{ (site_settings|default({})).get('tagline', '记录想法，分享发现，让对话继续。') }}</p><a href="{{ url_for('community.writing_guide') }}" class="footer-top">发文指南</a><a href="{{ url_for('community.portfolio') }}" class="footer-top">探索作品 {{ ui.icon('arrow') }}</a><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
 {% endblock %}
 {% block scripts %}
 {{ super() }}

@@ -1,0 +1,7 @@
+{% extends "admin/base.html" %}
+{% block admin_label %}管理操作记录{% endblock %}
+{% block admin_content %}
+<header class="admin-heading"><div><h1>操作记录</h1><p>文章、评论、用户与网站设置的管理更改。</p></div></header>
+<p class="admin-list-summary"><span>共 <strong>{{ pagination.total }}</strong> 条记录</span><span>最近操作在前</span></p>
+{{ admin_ui.activity(pagination.items) }}{{ admin_ui.pagination(pagination, 'admin.audit') }}
+{% endblock %}

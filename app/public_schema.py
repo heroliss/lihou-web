@@ -40,3 +40,39 @@ def migrate_account_kinds(database):
         # Their persisted kind, rather than a username prefix, controls future access.
         connection.executemany('UPDATE users SET account_kind=? WHERE id=?', changes)
         connection.commit()
+
+
+def migrate_admin_schema(database):
+    """Add moderation metadata once, with an online safety snapshot first.
+
+    New audit/settings tables are created by create_all. Only additive columns
+    are applied here because create_all intentionally does not alter old tables.
+    """
+    database = Path(database)
+    if not database.is_file():
+        return
+    additions = {'users': [('disabled', "BOOLEAN NOT NULL DEFAULT 0"),
+                           ('session_version', "INTEGER NOT NULL DEFAULT 0")],
+                 'posts': [('hidden', "BOOLEAN NOT NULL DEFAULT 0")]}
+    with closing(sqlite3.connect(database)) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        pending = []
+        for table, fields in additions.items():
+            if table not in tables:
+                continue
+            columns = {row[1] for row in connection.execute(f'PRAGMA table_info({table})')}
+            pending.extend((table, name, definition) for name, definition in fields if name not in columns)
+        normalize_comments = ('comments' in tables and connection.execute(
+            'SELECT 1 FROM comments WHERE disabled IS NULL LIMIT 1').fetchone() is not None)
+        if not pending and not normalize_comments:
+            return
+        backup = database.parent / ('before-admin-' + time.strftime('%Y%m%d-%H%M%S')
+                                    + '-' + secrets.token_hex(3) + '.sqlite')
+        backup_database(database, backup)
+        for table, name, definition in pending:
+            connection.execute(f'ALTER TABLE {table} ADD COLUMN {name} {definition}')
+        if 'posts' in tables:
+            connection.execute('CREATE INDEX IF NOT EXISTS ix_posts_hidden ON posts (hidden)')
+        if normalize_comments:
+            connection.execute('UPDATE comments SET disabled=0 WHERE disabled IS NULL')
+        connection.commit()

@@ -5,7 +5,7 @@
 {% block title %}{{ super() }}{{ posts[0].body.split('\n')[0].lstrip('#').strip()|truncate(60, true, '…') }}{% endblock %}
 {% block page_content %}
 <div class="reading-column"><a class="back-link" href="{{ url_for('main.index') }}">{{ ui.icon('back') }}全部文章</a>{% include '_posts.html' %}
-<section class="discussion" aria-labelledby="comments"><header class="discussion-heading"><h2 id="comments">讨论</h2><span>{{ posts[0].comments.count() }} 条评论</span></header>
+<section class="discussion" aria-labelledby="comments"><header class="discussion-heading"><h2 id="comments">讨论</h2><span>{{ posts[0].visible_comment_count }} 条评论</span></header>
 {% if current_user.can(Permission.COMMENT) %}<div class="comment-form">{{ ui.avatar(current_user, 'avatar-small') }}{{ forms.render_form(form, '发布评论', 'comment-write', {'body':'分享你的看法'}) }}</div>
 {% else %}<p class="join-discussion"><a href="{{ url_for('public_demo.entry') if config.get('PUBLIC_DEMO') else url_for('auth.login') }}">以访客身份加入</a>，写下你的看法。已有账号？<a href="{{ url_for('auth.login') }}">登录</a></p>{% endif %}
 {% include '_comments.html' %}{% if not comments %}<p class="discussion-empty">还没有评论，来开启这段对话。</p>{% endif %}

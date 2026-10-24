@@ -1,0 +1,9 @@
+{% extends "admin/base.html" %}
+{% block admin_label %}确认管理操作{% endblock %}
+{% block admin_content %}
+<div class="admin-confirm"><header class="admin-heading"><div><h1>{{ operation.title }}</h1><p>{{ operation.description }}</p></div></header>
+  <div class="admin-confirm-subject"><h2>更改对象</h2><p>{{ operation.target_label }}</p></div>
+  <dl class="admin-changes">{% for change in operation.changes %}<div><dt>{{ change.label }}</dt><dd><span class="admin-change-old">{{ change.before }}</span><span class="admin-change-arrow" aria-label="更改为">→</span>{{ change.after }}</dd></div>{% endfor %}</dl>
+  <form method="post" action="{{ url_for('admin.apply') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="token" value="{{ token }}"><div class="form-actions"><button type="submit" class="button">确认更改</button><a class="button button-secondary" href="{{ return_to }}">取消，返回列表</a></div></form>
+</div>
+{% endblock %}

@@ -60,6 +60,12 @@ p { text-wrap: pretty; }
 .site-nav { min-height: 78px; display: flex; align-items: center; gap: 42px; }
 .wordmark { color: var(--text); display: inline-flex; align-items: baseline; gap: 6px; font-size: 25px; font-weight: 700; letter-spacing: .035em; line-height: 1; }
 .wordmark:hover { color: var(--text); }
+.site-custom-wordmark { min-width: 0; max-width: 240px; font-size: 20px; flex-shrink: 1; }
+.site-custom-wordmark .site-wordmark-text { display: block; min-width: 0; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.site-custom-wordmark .brand-dot, .site-custom-wordmark .brand-community { flex-shrink: 0; }
+.footer-brand.site-name-brand { min-width: 0; max-width: min(240px, 100%); overflow-wrap: anywhere; }
+.site-configured-tagline { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .wordmark.site-custom-wordmark { max-width: 158px; font-size: 16px; } .site-custom-wordmark .site-wordmark-text { max-width: 108px; } }
 .brand-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .nav-feed { position: relative; min-height: 78px; display: flex; align-items: center; color: var(--muted); }
 .nav-feed.is-active { color: var(--text); }

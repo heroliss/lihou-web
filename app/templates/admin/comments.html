@@ -1,0 +1,15 @@
+{% extends "admin/base.html" %}
+{% block admin_label %}评论管理{% endblock %}
+{% block admin_content %}
+<header class="admin-heading"><div><h1>评论</h1><p>查看讨论上下文，保留友好、有价值的交流。</p></div></header>
+<form method="get" class="admin-toolbar" role="search"><label class="admin-search">搜索评论<input name="q" value="{{ q }}" placeholder="内容、作者或文章编号" type="search" maxlength="160"></label><label>显示状态<select name="status"><option value="all"{% if status == 'all' %} selected{% endif %}>全部状态</option><option value="visible"{% if status == 'visible' %} selected{% endif %}>公开</option><option value="hidden"{% if status == 'hidden' %} selected{% endif %}>已隐藏</option></select></label><button class="button button-small" type="submit">查找</button>{% if q or status not in ['all', ''] %}<a class="admin-clear" href="{{ url_for('admin.comments') }}">清除筛选</a>{% endif %}</form>
+<p class="admin-list-summary"><span>共 <strong>{{ pagination.total }}</strong> 条评论</span><span>最新发表在前</span></p>
+{% if pagination.items %}<div class="admin-content-list">{% for comment in pagination.items %}<article class="admin-content-row">
+  <div class="admin-row-heading"><h2>{{ ui.author_name(comment.author) }} {{ ui.identity_badge(comment.author) }}</h2>{{ admin_ui.status(comment.disabled) }}</div>
+  <div class="admin-row-meta"><span>#{{ comment.id }}</span>{{ admin_ui.date(comment.timestamp) }}{% if comment.post.hidden %}<span>文章 #{{ comment.post_id }} · 已隐藏</span>{% else %}<a href="{{ url_for('main.post', id=comment.post_id) }}#comment-{{ comment.id }}" target="_blank" rel="noopener">文章 #{{ comment.post_id }}<span class="sr-only">（新窗口）</span></a>{% endif %}</div>
+  <p class="admin-row-excerpt">{{ comment.body|truncate(460, true) }}</p>
+  <div class="admin-row-actions">{{ admin_ui.preview_button('comment', 'restore' if comment.disabled else 'hide', comment.id, '恢复公开' if comment.disabled else '隐藏评论', request.full_path) }}{% if not comment.post.hidden %}<a class="button button-small button-secondary" href="{{ url_for('main.post', id=comment.post_id) }}#comment-{{ comment.id }}" target="_blank" rel="noopener">查看上下文<span class="sr-only">（新窗口）</span></a>{% endif %}</div>
+  <details class="admin-preview"><summary>查看完整评论与文章</summary><div class="admin-preview-body"><div class="post-body">{{ comment.body_html|safe if comment.body_html else comment.body }}</div><hr><p><strong>所属文章</strong></p><p>{{ (comment.post.body_html or comment.post.body or '')|striptags|truncate(260, true) }}</p></div></details>
+</article>{% endfor %}</div>{% else %}{{ admin_ui.empty() }}{% endif %}
+{{ admin_ui.pagination(pagination, 'admin.comments', q=q, status=status) }}
+{% endblock %}

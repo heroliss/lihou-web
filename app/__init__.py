@@ -33,6 +33,8 @@ def create_app(config_name):
     if app.config.get('PUBLIC_DEMO'):
         from .public_demo import install
         install(app)
+        from .admin import install as install_admin
+        install_admin(app)
 
     if not app.debug and not app.testing and not app.config['SSL_DISABLE']:
         @app.before_request

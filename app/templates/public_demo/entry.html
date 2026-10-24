@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% import "_forms.html" as forms with context %}
 {% import "_ui.html" as ui with context %}
-{% block title %}{{ super() }}开始写作{% endblock %}
+{% set registration_open = (site_settings|default({})).get('registration_open', true) %}
+{% set guest_posting_open = (site_settings|default({})).get('guest_posting_open', true) %}
+{% set guest_post_limit = (site_settings|default({})).get('guest_post_limit', 10) %}
+{% block title %}{{ super() }}加入社区{% endblock %}
 {% block page_content %}
-<section class="welcome-page"><div class="welcome-copy"><h1>以访客身份加入</h1><p class="welcome-lead">不用先填一长串资料。<br>从写下第一个想法开始。</p><p>发布文章，参与讨论，关注喜欢的作者。你可以先使用访客身份，之后再设置自己的账号。</p><ul class="welcome-features"><li>{{ ui.icon('edit') }}用 Markdown 记录与分享</li><li>{{ ui.icon('comment') }}和其他读者展开讨论</li><li>{{ ui.icon('user') }}拥有自己的文章与主页</li></ul><a class="quiet-link" href="{{ url_for('main.index') }}">先读一会儿 {{ ui.icon('arrow') }}</a></div>
-<div class="welcome-action"><p class="account-writing-note">访客最多 10 篇文章或项目讨论，之后可创建账号解除篇数限制，保留已有内容。</p><h2>准备好了吗？</h2><p>点击后，为当前浏览器建立一个访客身份。</p>{{ forms.render_form(form, '开始写作') }}<p class="entry-privacy">文章、评论和个人资料会公开显示。访客身份保存在当前浏览器，清除 Cookie 后可能无法找回；设置账号可以继续保留这个身份。</p><div class="entry-account"><p>想直接使用账号？<a href="{{ url_for('auth.register') }}">创建账号</a></p><p>已经来过？<a href="{{ url_for('auth.login') }}">登录</a></p></div></div></section>
+<section class="welcome-page"><div class="welcome-copy"><h1>以访客身份加入</h1><p class="welcome-lead">不用先填一长串资料。<br>从分享第一个想法开始。</p><p>{{ '发布文章，参与讨论，关注喜欢的作者。' if guest_posting_open else '发表评论，参与讨论，关注喜欢的作者。访客发文暂时关闭。' }}{% if registration_open %}你可以先使用访客身份，之后再设置自己的账号。{% endif %}</p><ul class="welcome-features">{% if guest_posting_open %}<li>{{ ui.icon('edit') }}用 Markdown 记录与分享</li>{% endif %}<li>{{ ui.icon('comment') }}和其他读者展开讨论</li><li>{{ ui.icon('user') }}拥有自己的身份与主页</li></ul><a class="quiet-link" href="{{ url_for('main.index') }}">先读一会儿 {{ ui.icon('arrow') }}</a></div>
+<div class="welcome-action"><p class="account-writing-note">{% if guest_posting_open %}访客最多 {{ guest_post_limit }} 篇文章或项目讨论。{% if registration_open %}创建账号可解除篇数限制，保留已有内容。{% endif %}{% else %}访客发文暂时关闭，仍可在文章与已有讨论下发表评论。{% endif %}</p><h2>准备好了吗？</h2><p>点击后，为当前浏览器建立一个访客身份。</p>{{ forms.render_form(form, '开始写作' if guest_posting_open else '加入交流') }}<p class="entry-privacy">文章、评论和个人资料会公开显示。访客身份保存在当前浏览器，清除 Cookie 后可能无法找回。{% if registration_open %}设置账号可以继续保留这个身份。{% endif %}</p><div class="entry-account">{% if registration_open %}<p>想直接使用账号？<a href="{{ url_for('auth.register') }}">创建账号</a></p>{% else %}<p>新账号注册暂时关闭。</p>{% endif %}<p>已经来过？<a href="{{ url_for('auth.login') }}">登录</a></p></div></div></section>
 {% endblock %}
