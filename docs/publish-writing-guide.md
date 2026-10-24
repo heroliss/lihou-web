@@ -14,7 +14,7 @@ python deploy/manage_public.py publish-writing-guide --dry-run
 python deploy/manage_public.py publish-writing-guide
 ```
 
-命令仅支持已准备好的独立 `public-demo.sqlite`。它核对既有 `demo` 账号同时具有 `system` 身份、既有站点邮箱和已有文章，身份不符就停止；不会创建访客或把读者改成站点作者。首次发布前创建 `before-writing-guide-*.sqlite` 一致性备份，然后在一个事务中新增文章和 `site_guide_publications` 发布记录。
+命令仅支持已准备好的独立 `public-demo.sqlite`。它使用持久的站点作者标记确认真实作者；尚未合并的旧站兼容核对 `demo` 系统身份与既有站点邮箱。作者必须已有文章，身份不符就停止；不会创建访客或把普通管理员改成站点作者。首次发布前创建 `before-writing-guide-*.sqlite` 一致性备份，然后在一个事务中新增文章和 `site_guide_publications` 发布记录。作者合并后原发布记录、文章 ID 和内容继续有效。
 
 固定发布键为 `writing-guide-v1`。再次执行返回 `already-published` 和原文章 ID，不新增、不替换正文，不改时间、回复或任何其他文章。站点作者以后手动修改该教学，也不会被命令重写；如果原文已删除或作者发生变化，命令停止并要求维护者核对，而不是擅自重建。`--dry-run` 不创建表、不创建备份、不改写库。
 

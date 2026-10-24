@@ -115,10 +115,13 @@ def login():
     form = PublicLoginForm()
     if form.validate_on_submit():
         identifier = form.username.data.strip().lower()
-        user = User.query.filter(or_(func.lower(User.username) == identifier,
-                                     func.lower(User.email) == identifier),
-                                 User.account_kind == 'account').first()
-        if user is not None and not user.disabled and user.verify_password(form.password.data):
+        from .owner_identity import user_for_username
+        # '@' is not legal in usernames, so email and historical login names
+        # cannot ambiguously select different accounts.
+        user = (User.query.filter(func.lower(User.email) == identifier,
+                                  User.account_kind == 'account').first()
+                if '@' in identifier else user_for_username(identifier, login=True))
+        if user is not None and user.is_registered and not user.disabled and user.verify_password(form.password.data):
             establish_identity(user)
             if user.email and not user.confirmed:
                 flash('邮箱尚未确认。你仍可继续浏览和保留自己的内容。')

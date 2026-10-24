@@ -76,3 +76,25 @@ def migrate_admin_schema(database):
         if normalize_comments:
             connection.execute('UPDATE comments SET disabled=0 WHERE disabled IS NULL')
         connection.commit()
+
+
+def migrate_owner_schema(database):
+    """Add owner identity metadata, preserving all old users and their foreign keys."""
+    database = Path(database)
+    if not database.is_file():
+        return
+    with closing(sqlite3.connect(database)) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if 'users' not in tables:
+            return
+        columns = {row[1] for row in connection.execute('PRAGMA table_info(users)')}
+        additions = [('is_site_owner', 'BOOLEAN NOT NULL DEFAULT 0'),
+                     ('merged_into_id', 'INTEGER REFERENCES users(id)')]
+        pending = [(name, definition) for name, definition in additions if name not in columns]
+        if not pending:
+            return
+        backup_database(database, database.parent / ('before-owner-schema-' + time.strftime('%Y%m%d-%H%M%S')
+                                                    + '-' + secrets.token_hex(3) + '.sqlite'))
+        for name, definition in pending:
+            connection.execute(f'ALTER TABLE users ADD COLUMN {name} {definition}')
+        connection.commit()

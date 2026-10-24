@@ -23,7 +23,7 @@
 {%- endmacro %}
 {% macro author_name(user) -%}{{ user.display_name|default(user.name or user.username, true) }}{%- endmacro %}
 {% macro identity_badge(user) -%}
-{% if user.is_visitor|default(false) %}<span class="identity-badge">访客</span>{% elif user.is_system|default(false) %}<span class="identity-badge identity-author">站点作者</span>{% elif user.is_registered|default(false) %}<span class="identity-badge identity-account">账号</span>{% endif %}
+{% if user.is_site_owner|default(false) %}<span class="identity-badge identity-author">站点作者</span>{% elif user.is_visitor|default(false) %}<span class="identity-badge">访客</span>{% elif user.is_system|default(false) %}<span class="identity-badge">系统身份</span>{% elif user.is_registered|default(false) %}<span class="identity-badge identity-account">账号</span>{% endif %}
 {%- endmacro %}
 {% macro avatar(user, extra_class='') -%}
 <span class="avatar {{ extra_class }} avatar-tone-{{ (user.id or 0) % 4 }}" aria-hidden="true"><span>{{ author_name(user)|trim|first|upper }}</span>{% if not user.is_visitor|default(false) %}<img src="{{ user.gravatar(size=96)|replace('http://','https://') }}" width="48" height="48" alt="" loading="lazy" data-avatar-image>{% endif %}</span>

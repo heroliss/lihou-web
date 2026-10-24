@@ -78,6 +78,8 @@ class User(UserMixin, db.Model):
     account_kind = db.Column(db.String(16), nullable=False, default='account', server_default='account')
     disabled = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
     session_version = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    is_site_owner = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    merged_into_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     password_hash = db.Column(db.String(256))
     confirmed = db.Column(db.Boolean, default=False)
@@ -367,6 +369,7 @@ class User(UserMixin, db.Model):
 
 class AnonymousUser(AnonymousUserMixin):
     is_visitor = is_guest = is_registered = is_system = False
+    is_site_owner = False
     display_name = '访客'
 
     def can(self, permissions):
@@ -376,6 +379,14 @@ class AnonymousUser(AnonymousUserMixin):
         return False
 
 login_manager.anonymous_user = AnonymousUser
+
+
+class UsernameAlias(db.Model):
+    """Reserved historical names: canonical profile links and opt-in login aliases."""
+    __tablename__ = 'username_aliases'
+    username = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    login_allowed = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
 
 
 @login_manager.user_loader

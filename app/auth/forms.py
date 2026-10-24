@@ -3,7 +3,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import DataRequired as Required, Length, Email, Regexp, EqualTo, Optional
 from wtforms import ValidationError
-from ..models import User
+from ..models import User, UsernameAlias
 from sqlalchemy import func
 
 
@@ -38,7 +38,8 @@ class PublicRegistrationForm(FlaskForm):
         name = field.data.lower()
         if name.startswith('guest_') or name in {'demo', 'admin', 'administrator', 'system', 'liss'}:
             raise ValidationError('此用户名已保留，请选择其他名称。')
-        if User.query.filter(func.lower(User.username) == name).first():
+        if (User.query.filter(func.lower(User.username) == name).first()
+                or UsernameAlias.query.filter_by(username=name).first()):
             raise ValidationError('此用户名已被使用。')
 
     def validate_email(self, field):

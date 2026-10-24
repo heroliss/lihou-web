@@ -1,4 +1,4 @@
-"""Distinguish the content author from registered accounts using isolated data."""
+"""Historical system identities never masquerade as the real site owner."""
 import html
 import re
 import tempfile
@@ -54,18 +54,21 @@ class AuthorIdentityTests(unittest.TestCase):
             'csrf_token': html.unescape(token),
         })
 
-    def test_anonymous_author_page_explains_content_identity(self):
+    def test_historical_system_profile_does_not_claim_real_site_ownership(self):
         response = self.client.get('/user/demo')
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn(self.notice, page)
+        self.assertNotIn(self.notice, page)
+        self.assertNotIn('identity-author', page)
+        self.assertIn('系统身份', page)
         self.assertNotIn('管理站点文章', page)
 
-    def test_admin_author_page_has_management_link_and_existing_edit_access(self):
+    def test_admin_can_still_edit_historical_content_without_separate_author_workflow(self):
         self.assertEqual(self.login('identity_admin').status_code, 302)
         page = self.client.get('/user/demo').get_data(as_text=True)
-        self.assertIn(self.notice, page)
-        self.assertIn('href="/admin/posts">管理站点文章</a>', page)
+        self.assertNotIn(self.notice, page)
+        self.assertNotIn('管理站点文章', page)
+        self.assertIn('href="/admin/users?q=demo"', page)
         self.assertIn('编辑（管理）', page)
         self.assertEqual(self.client.get(f'/edit/{self.author_post}').status_code, 200)
 

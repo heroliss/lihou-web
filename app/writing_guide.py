@@ -17,6 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from . import db
 from .models import Post, User, utcnow
 from .public_demo_storage import backup_database
+from .owner_identity import get_site_owner
 
 
 GUIDE_KEY = 'writing-guide-v1'
@@ -46,9 +47,8 @@ def get_published_writing_guide():
     with db.session.no_autoflush:
         record = db.session.get(WritingGuidePublication, GUIDE_KEY)
         post = db.session.get(Post, record.post_id) if record is not None else None
-        if (post is None or post.hidden or post.author is None or post.author.username != 'demo'
-                or not post.author.is_system
-                or post.author.email not in {'demo@example.com', 'demo@example.invalid'}):
+        owner = get_site_owner()
+        if post is None or post.hidden or owner is None or post.author_id != owner.id:
             return None
     return post
 
@@ -67,10 +67,8 @@ def publish_writing_guide(*, dry_run=False):
         tables = set(inspect(db.engine).get_table_names())
         if not {'users', 'posts', 'comments', 'follows', 'roles'} <= tables:
             raise WritingGuideError('Prepare site storage explicitly before publishing the guide.')
-        author = User.query.filter_by(username='demo').first()
-        if (author is None or not author.is_system
-                or author.email not in {'demo@example.com', 'demo@example.invalid'}
-                or author.posts.count() == 0):
+        author = get_site_owner()
+        if author is None or author.posts.count() == 0:
             raise WritingGuideError('The existing fixed Liss system author could not be verified; nothing was changed.')
         published = (db.session.get(WritingGuidePublication, GUIDE_KEY)
                      if WritingGuidePublication.__tablename__ in tables else None)

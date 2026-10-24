@@ -10,6 +10,23 @@ from .forms import EditProfileForm, EditProfileAdminForm, PostForm, \
 from .. import db
 from ..models import Permission, Role, User, Post, Comment
 from ..decorators import admin_required, permission_required
+from urllib.parse import urlencode
+
+
+def profile_identity(username):
+    if current_app.config.get('PUBLIC_DEMO'):
+        from ..owner_identity import user_for_username
+        return user_for_username(username)
+    return User.query.filter_by(username=username).first()
+
+
+def canonical_profile_redirect(user, username, endpoint):
+    if user.username != username and request.method in {'GET', 'HEAD'}:
+        destination = url_for(endpoint, username=user.username)
+        if request.args:
+            destination += '?' + urlencode(list(request.args.items(multi=True)))
+        return redirect(destination, code=301)
+    return None
 
 
 @main.after_app_request
@@ -62,7 +79,12 @@ def index():
 
 @main.route('/user/<username>')
 def user(username):
-    user = User.query.filter_by(username=username).first_or_404()
+    user = profile_identity(username)
+    if user is None:
+        abort(404)
+    canonical = canonical_profile_redirect(user, username, '.user')
+    if canonical is not None:
+        return canonical
     page = request.args.get('page', 1, type=int)
     pagination = user.posts.filter_by(hidden=False).order_by(Post.timestamp.desc()).paginate(
         page=page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
@@ -171,17 +193,17 @@ def follow(username):
             validate_csrf(request.form.get('csrf_token'))
         except ValidationError:
             abort(400)
-    user = User.query.filter_by(username=username).first()
+    user = profile_identity(username)
     if user is None:
         flash('无此用户！')
         return redirect(url_for('.index'))
     if current_user.is_following(user):
         flash('你已经关注了这个用户')
-        return redirect(url_for('.user', username=username))
+        return redirect(url_for('.user', username=user.username))
     current_user.follow(user)
     db.session.commit()
     flash('关注 %s 成功！' % username)
-    return redirect(url_for('.user', username=username))
+    return redirect(url_for('.user', username=user.username))
 
 
 @main.route('/unfollow/<username>', methods=['GET', 'POST'])
@@ -193,25 +215,28 @@ def unfollow(username):
             validate_csrf(request.form.get('csrf_token'))
         except ValidationError:
             abort(400)
-    user = User.query.filter_by(username=username).first()
+    user = profile_identity(username)
     if user is None:
         flash('无此用户！')
         return redirect(url_for('.index'))
     if not current_user.is_following(user):
         flash('你没有关注这个用户')
-        return redirect(url_for('.user', username=username))
+        return redirect(url_for('.user', username=user.username))
     current_user.unfollow(user)
     db.session.commit()
     flash('你对 %s 的关注取消成功.' % username)
-    return redirect(url_for('.user', username=username))
+    return redirect(url_for('.user', username=user.username))
 
 
 @main.route('/followers/<username>')
 def followers(username):
-    user = User.query.filter_by(username=username).first()
+    user = profile_identity(username)
     if user is None:
         flash('无此用户！')
         return redirect(url_for('.index'))
+    canonical = canonical_profile_redirect(user, username, '.followers')
+    if canonical is not None:
+        return canonical
     page = request.args.get('page', 1, type=int)
     pagination = user.followers.paginate(
         page=page, per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'],
@@ -225,10 +250,13 @@ def followers(username):
 
 @main.route('/followed-by/<username>')
 def followed_by(username):
-    user = User.query.filter_by(username=username).first()
+    user = profile_identity(username)
     if user is None:
         flash('无此用户！')
         return redirect(url_for('.index'))
+    canonical = canonical_profile_redirect(user, username, '.followed_by')
+    if canonical is not None:
+        return canonical
     page = request.args.get('page', 1, type=int)
     pagination = user.followed.paginate(
         page=page, per_page=current_app.config['FLASKY_FOLLOWERS_PER_PAGE'],

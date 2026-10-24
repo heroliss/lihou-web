@@ -60,6 +60,13 @@ def _upgrade_untouched_welcome(author):
 def seed_sample_content(*, password='local-demo-only', public=False):
     db.create_all()
     Role.insert_roles()
+    if public:
+        from .owner_identity import get_site_owner
+        owner = get_site_owner(legacy_fallback=False)
+        if owner is not None:
+            # Once claimed, site articles are ordinary editable owner content.
+            # Reloading must neither replace edits nor recreate deleted samples.
+            return owner
     author = User.query.filter_by(username='demo').first()
     if author is None:
         author = User(email='demo@example.com', username='demo', password=password,

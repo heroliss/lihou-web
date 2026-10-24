@@ -35,6 +35,8 @@ def create_app(config_name):
         install(app)
         from .admin import install as install_admin
         install_admin(app)
+        from .owner_identity import install as install_owner_identity
+        install_owner_identity(app)
 
     if not app.debug and not app.testing and not app.config['SSL_DISABLE']:
         @app.before_request

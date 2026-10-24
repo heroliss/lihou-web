@@ -62,7 +62,7 @@ class AdminAudit(db.Model):
         return {'post.hide': '隐藏文章', 'post.restore': '恢复文章',
                 'comment.hide': '隐藏评论', 'comment.restore': '恢复评论',
                 'user.update': '更新用户权限', 'settings.update': '更新站点设置',
-                'user.grant_admin': '授予管理员权限'}.get(self.action, self.action)
+                'user.grant_admin': '授予管理员权限', 'user.merge_site_owner': '合并站点作者身份'}.get(self.action, self.action)
 
 
 class AdminConfirmation(db.Model):
@@ -147,7 +147,7 @@ def index():
         users=User.query.filter(User.account_kind != 'system').count(),
         registered_users=User.query.filter_by(account_kind='account').count(),
         guests=User.query.filter_by(account_kind='guest').count(),
-        disabled_users=User.query.filter_by(disabled=True).count(), admins=active_admin_count())
+        disabled_users=User.query.filter_by(disabled=True, merged_into_id=None).count(), admins=active_admin_count())
     return render_template('admin/index.html', admin_section='index', stats=stats,
         recent_audit=AdminAudit.query.order_by(AdminAudit.id.desc()).limit(8).all())
 
@@ -190,7 +190,7 @@ def comments():
 def users():
     q, status = search_term(), request.args.get('status', 'all')
     kind, role = request.args.get('kind', 'all'), request.args.get('role', 'all')
-    query = User.query
+    query = User.query.filter(User.merged_into_id.is_(None))
     if q:
         if re.fullmatch(r'#[0-9]{1,18}', q):
             query = query.filter(User.id == int(q[1:]))
@@ -201,6 +201,8 @@ def users():
         query = query.filter(User.disabled.is_(status == 'disabled'))
     if kind in {'account', 'guest', 'system'}:
         query = query.filter_by(account_kind=kind)
+    elif kind == 'owner':
+        query = query.filter_by(is_site_owner=True)
     if role in dict(ROLE_CHOICES):
         selected = role_for(role)
         query = query.filter_by(role_id=selected.id)
@@ -251,6 +253,8 @@ def state_of(kind, target):
 def check_user_change(target, changes):
     if target.is_system:
         fail('系统作者账号由站点维护，不能在此修改。')
+    if target.is_site_owner and (changes['role'] != 'admin' or changes['disabled']):
+        fail('站点作者必须保持管理员身份和正常状态。个人资料可在账户菜单中修改。')
     if not target.is_registered and changes['role'] != 'normal':
         fail('访客身份不能被授予管理角色；请先自行注册为账号。')
     if target.id == current_user.id and changes['disabled']:

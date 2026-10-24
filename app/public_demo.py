@@ -78,9 +78,10 @@ class Sandbox:
     def prepare(self):
         self._assert_database()
         if not self.initialized:
-            from .public_schema import migrate_account_kinds, migrate_admin_schema
+            from .public_schema import migrate_account_kinds, migrate_admin_schema, migrate_owner_schema
             migrate_account_kinds(db.engine.url.database)
             migrate_admin_schema(db.engine.url.database)
+            migrate_owner_schema(db.engine.url.database)
             # create_all / sample seeding only add missing tables and samples.
             # Invalid databases fail instead of being deleted or recreated.
             seed_sample_content(password=secrets.token_urlsafe(48), public=True)
