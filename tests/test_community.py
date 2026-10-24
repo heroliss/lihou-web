@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 from app import create_app, db
 from app.community import PROJECTS, ProjectEntry
-from app.models import Post, User
+from app.models import Comment, Post, User
 from config import PublicDemoConfig
 
 
@@ -81,6 +81,42 @@ class CommunityTests(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(Post.query.count(), 3)
             self.assertEqual(ProjectEntry.query.count(), 0)
+
+    def test_desktop_project_discussions_are_anonymous_read_only_and_preserve_existing_data(self):
+        expected = {
+            'gomoku': ('Gomoku v3', '五子棋与搜索引擎实验'),
+            'route-lab': ('Route Lab', '旅行商算法实验室'),
+            'sort-lab': ('Sort Lab', '排序算法实验台'),
+        }
+        with self.app.app_context():
+            author = User.query.order_by(User.id).first()
+            original = Post.query.order_by(Post.id).first()
+            # Existing articles, comments and a different project's discussion must stay intact.
+            db.session.add(Comment(body='Existing comment retained.', author=author, post=original))
+            db.session.add(ProjectEntry(project_slug='outpost', post=Post(
+                body='Existing Outpost discussion retained.', author=author)))
+            db.session.commit()
+
+        def snapshot():
+            with self.app.app_context():
+                return {
+                    table.name: sorted((tuple(row) for row in db.session.execute(table.select()).all()), key=repr)
+                    for table in db.metadata.sorted_tables
+                }
+
+        before = snapshot()
+        anonymous = self.app.test_client()
+        for slug, (name, description) in expected.items():
+            with self.subTest(slug=slug):
+                self.assertEqual(PROJECTS[slug], (name, description))
+                response = anonymous.get('/projects/' + slug + '/talk/')
+                self.assertEqual(response.status_code, 200)
+                page = response.get_data(as_text=True)
+                self.assertIn(name, page)
+                self.assertIn(description, page)
+                self.assertIn('/works/projects/' + slug + '/', page)
+                self.assertNotIn('Existing Outpost discussion retained.', page)
+        self.assertEqual(snapshot(), before)
 
     def test_portfolio_build_is_served_without_exposing_storage_or_dotfiles(self):
         portfolio = Path(self.directory.name) / 'gallery'

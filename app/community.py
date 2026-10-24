@@ -64,6 +64,7 @@ def _with_request_query(location):
 PROJECTS = {
     'nomadworkshop': ('NomadWorkshop', '移动生存游戏 · AI 驱动开发'),
     'outpost': ('Outpost', 'Unity 波次防守游戏'),
+    'gomoku': ('Gomoku v3', '五子棋与搜索引擎实验'),
     'dubforge': ('DubForge', 'AI 视频译制工作台'),
     'ssframework': ('SSFramework', 'Unity 模块化框架'),
     'eazybuildpipeline': ('EazyBuildPipeline', 'Unity 资源与构建工具'),
@@ -72,6 +73,8 @@ PROJECTS = {
     'learnopengl': ('LearnOpenGL', '图形渲染实验'),
     'aoe4-autovillager-tool': ('AOE4 Flow Editor', '节点式游戏辅助工具'),
     'ga-sort': ('GA-sort', '遗传算法实验'),
+    'route-lab': ('Route Lab', '旅行商算法实验室'),
+    'sort-lab': ('Sort Lab', '排序算法实验台'),
     'floydshortestpath': ('FloydShortestPath', 'Unity 寻路算法'),
     'liss-web': ('Liss Community', '写作与交流社区'),
 }
