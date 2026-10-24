@@ -25,6 +25,14 @@
     image.addEventListener('error', fallback);
     if (image.complete && !image.naturalWidth) fallback();
   });
+  document.querySelectorAll('[data-post-cover-image]').forEach(function (image) {
+    function fallback() {
+      image.closest('.post-cover').hidden = true;
+      image.closest('.post-preview').classList.remove('has-cover');
+    }
+    image.addEventListener('error', fallback);
+    if (image.complete && !image.naturalWidth) fallback();
+  });
   function openWriting() {
     if (location.hash !== '#write') return;
     var composer = document.getElementById('write');

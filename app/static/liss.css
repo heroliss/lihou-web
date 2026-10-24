@@ -152,11 +152,16 @@ p { text-wrap: pretty; }
 .post-byline { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 9px; min-width: 0; flex: 1; }
 .post-author, .comment-author { color: var(--text); font-size: .8125rem; font-weight: 600; overflow-wrap: anywhere; }
 .post-date { color: var(--subtle); margin-left: auto; font-size: .6875rem; }
-.post-title { font-size: 1.25rem; line-height: 1.6; letter-spacing: -.015em; margin: 0 0 10px; overflow-wrap: anywhere; text-wrap: pretty; }
+.post-preview { display: grid; gap: 20px; align-items: center; margin-bottom: 14px; }
+.post-preview.has-cover { grid-template-columns: minmax(0, 1fr) minmax(156px, 30%); gap: 25px; }
+.post-copy { min-width: 0; }
+.post-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 1.25rem; line-height: 1.5; letter-spacing: -.015em; margin: 0 0 9px; overflow-wrap: anywhere; text-wrap: pretty; }
 .post-title>a { color: var(--text); }
 .post-title>a:hover { color: var(--accent); }
-.post-excerpt { color: var(--muted); font-size: .875rem; line-height: 1.95; margin: 0 0 19px; overflow-wrap: anywhere; }
+.post-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; color: var(--muted); font-size: .875rem; line-height: 1.8; margin: 0; overflow-wrap: anywhere; }
 .post-excerpt:empty { display: none; }
+.post-cover { display: flex; align-items: center; justify-content: center; min-width: 0; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.post-cover img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .post-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; color: var(--subtle); font-size: .75rem; }
 .post-footer>a { display: inline-flex; gap: 6px; align-items: center; min-height: 30px; color: var(--subtle); }
 .post-footer>a:hover { color: var(--accent); }
@@ -425,7 +430,9 @@ textarea.form-control { resize: vertical; }
   .post-title { font-size: 1.125rem; }
   .post-byline { gap: 4px 7px; }
   .post-date { margin-left: 0; font-size: .625rem; }
-  .post-excerpt { font-size: .8125rem; line-height: 1.95; }
+  .post-excerpt { font-size: .8125rem; line-height: 1.8; }
+  .post-preview.has-cover { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .post-cover { aspect-ratio: 4 / 1; max-height: 120px; }
   .post-footer { gap: 10px 15px; font-size: .6875rem; }
   .post-meta { gap: 10px; margin-bottom: 13px; }
   .post-author { font-size: .75rem; }

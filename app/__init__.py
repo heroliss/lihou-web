@@ -29,6 +29,8 @@ def create_app(config_name):
     db.init_app(app)
     login_manager.init_app(app)
     pagedown.init_app(app)
+    from .post_preview import post_preview
+    app.add_template_filter(post_preview, 'post_preview')
 
     if app.config.get('PUBLIC_DEMO'):
         from .public_demo import install
