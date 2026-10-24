@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="300" viewBox="0 0 1000 300" role="img" aria-labelledby="title desc">
+  <title id="title">Writing, previewing and sharing</title>
+  <desc id="desc">An original flow illustration for the Liss Community writing guide, not an editor screenshot.</desc>
+  <rect width="1000" height="300" rx="24" fill="#0c1421"/>
+  <rect x="1" y="1" width="998" height="298" rx="23" fill="none" stroke="#294053" stroke-width="2"/>
+  <g fill="none" stroke="#66dec6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M123 94h51v64h-51zM134 109h29M134 122h23M134 135h17"/>
+    <path d="M475 111c21-27 50-27 71 0-21 27-50 27-71 0z"/>
+    <circle cx="510" cy="111" r="8"/>
+    <path d="m817 101 31-17v57l-31-17zM848 107h13M814 105h-13v15h13M817 125l6 24h13l-5-18"/>
+    <path d="M286 124h74m-12-11 12 11-12 11M644 124h74m-12-11 12 11-12 11" stroke="#3b6670"/>
+  </g>
+  <g font-family="system-ui,sans-serif" text-anchor="middle">
+    <g fill="#edf6fb" font-size="24" font-weight="650"><text x="150" y="204">WRITE</text><text x="510" y="204">PREVIEW</text><text x="840" y="204">SHARE</text></g>
+    <g fill="#91a7b8" font-size="15"><text x="150" y="232">A thought, in your words.</text><text x="510" y="232">See it before publishing.</text><text x="840" y="232">Start a conversation.</text></g>
+    <text x="500" y="40" fill="#91a7b8" font-size="13" letter-spacing="3">LISS COMMUNITY · WRITING FLOW</text>
+  </g>
+</svg>

@@ -168,7 +168,10 @@ class Sandbox:
             abort(429, description='站点的身份容量暂时已满；已有账号仍可登录，已有内容会继续保留。')
 
     def quota(self, suffix):
-        prefix = 'PUBLIC_ACCOUNT_' if current_user.is_registered and current_user.confirmed else 'PUBLIC_DEMO_'
+        # Registration removes the article ceiling even while an optional email
+        # awaits confirmation. Other unconfirmed-account limits stay unchanged.
+        registered = current_user.is_registered and (suffix == 'MAX_POSTS' or current_user.confirmed)
+        prefix = 'PUBLIC_ACCOUNT_' if registered else 'PUBLIC_DEMO_'
         return self.app.config[prefix + suffix]
 
     def limit_mail(self, email):
@@ -269,8 +272,13 @@ class Sandbox:
                 abort(413, description=f'内容请控制在 {maximum} 字以内。')
         if endpoint == 'main.edit_profile' and len(request.form.get('about_me', '')) > self.quota('MAX_PROFILE_BODY'):
             abort(413, description=f'个人简介请控制在 {self.quota("MAX_PROFILE_BODY")} 字以内。')
-        if endpoint in {'main.index', 'community.project_talk'} and current_user.posts.count() >= self.quota('MAX_POSTS'):
-            abort(429, description=f'当前身份最多发布 {self.quota("MAX_POSTS")} 篇文章，可继续编辑已有文章。')
+        if endpoint in {'main.index', 'community.project_talk'}:
+            maximum = self.quota('MAX_POSTS')
+            if maximum is not None and current_user.posts.count() >= maximum:
+                description = (f'访客最多发布 {maximum} 篇文章。创建账号后不限篇数，已有文章仍可编辑。'
+                               if current_user.is_visitor else
+                               f'当前账号最多发布 {maximum} 篇文章，可继续编辑已有文章。')
+                abort(429, description=description)
         if endpoint == 'main.post' and current_user.comments.count() >= self.quota('MAX_COMMENTS'):
             abort(429, description='当前身份的评论数量已达上限，已有评论会继续保留。')
         if endpoint == 'main.follow' and current_user.followed.count() >= self.quota('MAX_FOLLOWS') + 1:

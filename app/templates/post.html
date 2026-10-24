@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "_forms.html" as forms %}
+{% import "_forms.html" as forms with context %}
 {% import "_macros.html" as macros %}
 {% import "_ui.html" as ui with context %}
 {% block title %}{{ super() }}{{ posts[0].body.split('\n')[0].lstrip('#').strip()|truncate(60, true, '…') }}{% endblock %}

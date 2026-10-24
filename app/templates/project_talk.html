@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "_forms.html" as forms %}
+{% import "_forms.html" as forms with context %}
 {% import "_macros.html" as macros %}
 {% import "_ui.html" as ui with context %}
 {% block title %}{{ super() }}{{ project[0] }} · 交流{% endblock %}
@@ -18,4 +18,3 @@
 <aside class="community-aside" aria-label="作品与交流入口"><section class="aside-about"><h2>边体验，边交流。</h2><p>截图、技术说明与运行方式在作品页；问题与想法留在这里，方便继续讨论。</p><a class="quiet-link" href="{{ url_for('community.portfolio', path='projects/' ~ slug ~ '/') }}">查看这个作品 {{ ui.icon('arrow') }}</a></section><section class="aside-note"><h2>更多作品</h2><div class="project-talk-list">{% for other_slug, other in project_catalog.items() %}{% if other_slug != slug %}<a href="{{ url_for('community.project_talk', slug=other_slug) }}">{{ other[0] }} {{ ui.icon('arrow') }}</a>{% endif %}{% endfor %}</div></section></aside>
 </div>
 {% endblock %}
-{% block scripts %}{{ super() }}{{ pagedown.include_pagedown() }}{% endblock %}

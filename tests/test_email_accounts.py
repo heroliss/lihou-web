@@ -328,6 +328,30 @@ class EmailAccountsTests(unittest.TestCase):
         self.assertEqual(self.submit('/auth/login', {'username': 'NO_EMAIL',
             'password': 'Good-password-123'}, client=other).status_code, 302)
 
+    def test_unverified_optional_email_upgrade_removes_the_article_count_limit(self):
+        uid = self.start()
+        with self.app.app_context():
+            db.session.add_all(Post(author_id=uid, body=f'Guest article {index}') for index in range(10))
+            db.session.commit()
+            old_ids = {post.id for post in db.session.get(User, uid).posts}
+        self.assertEqual(self.submit('/', {'body': 'Guest has reached ten'}, token_path='/').status_code, 429)
+        self.assertEqual(self.register().status_code, 302)
+        with self.client.session_transaction() as saved:
+            self.assertEqual(saved['public_demo_uid'], str(uid))
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            self.assertTrue(user.is_registered)
+            self.assertFalse(user.confirmed)
+        for path in ('/', '/projects/outpost/talk/'):
+            self.assertEqual(self.submit(path, {'body': 'Email confirmation is optional for article count'},
+                                         token_path=path).status_code, 302)
+        # Other existing limits for an unconfirmed mailbox are unchanged.
+        self.assertEqual(self.submit('/', {'body': 'x' * 8001}, token_path='/').status_code, 413)
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            self.assertEqual(user.posts.count(), 12)
+            self.assertTrue(old_ids.issubset({post.id for post in user.posts}))
+
     def test_optional_email_can_be_bound_after_registration_and_rebound(self):
         self.assertEqual(self.register(email='', username='bind_later').status_code, 302)
         with self.app.app_context():

@@ -8,7 +8,10 @@
 <meta name="description" content="Liss Community，记录与交流的小地方。探索 Liss 的作品，分享想法，让对话继续。">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 <script>try{var t=localStorage.getItem('liss-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-3">
+{% if request.endpoint in ['main.index', 'main.edit', 'community.project_talk'] and current_user.is_authenticated %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/easymde-2.21.0/easymde.min.css') }}">
+{% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-4">
 {% endblock %}
 {% block navbar %}
 <a class="skip-link" href="#main-content">跳到正文</a>
@@ -45,11 +48,16 @@
   {% if config.get('PUBLIC_DEMO') and current_user.is_authenticated and current_user.is_registered and current_user.email and not current_user.confirmed %}<div class="email-status" role="status"><p>邮箱尚未确认。你仍可以继续写作和交流。</p><a href="{{ url_for('auth.unconfirmed') }}">确认邮箱 {{ ui.icon('arrow') }}</a></div>{% endif %}
   {% block page_content %}{% endblock %}
 </main>
-<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>Community</span></a><p>记录想法，分享发现，让对话继续。</p><a href="{{ url_for('community.portfolio') }}" class="footer-top">探索作品 {{ ui.icon('arrow') }}</a><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
+<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>Community</span></a><p>记录想法，分享发现，让对话继续。</p><a href="{{ url_for('community.writing_guide') }}" class="footer-top">发文指南</a><a href="{{ url_for('community.portfolio') }}" class="footer-top">探索作品 {{ ui.icon('arrow') }}</a><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
 {% endblock %}
 {% block scripts %}
 {{ super() }}
 {{ moment.include_moment() }}
 {{ moment.locale("zh-cn") }}
-<script src="{{ url_for('static', filename='liss.js') }}?v=20261024-2" defer></script>
+<script src="{{ url_for('static', filename='liss.js') }}?v=20261024-3" defer></script>
+{% if request.endpoint in ['main.index', 'main.edit', 'community.project_talk'] and current_user.is_authenticated %}
+<script src="{{ url_for('static', filename='vendor/dompurify-3.4.17/purify.min.js') }}" defer></script>
+<script src="{{ url_for('static', filename='vendor/easymde-2.21.0/easymde.min.js') }}" defer></script>
+<script src="{{ url_for('static', filename='writing.js') }}?v=20261024-1" defer></script>
+{% endif %}
 {% endblock %}

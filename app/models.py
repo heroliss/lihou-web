@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+from functools import partial
 import hashlib
 from werkzeug.security import generate_password_hash, check_password_hash
 from .tokens import TokenSerializer as Serializer
 from bleach.css_sanitizer import CSSSanitizer
+from bleach.linkifier import LinkifyFilter
 from markdown import markdown
 import bleach
 from flask import current_app, request, url_for
@@ -378,14 +380,17 @@ class Post(db.Model):
     def on_changed_body(target, value, oldvalue, initiator):
         allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code',
                         'em', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
-                        'h1', 'h2', 'h3', 'p','img','button','table','time','font']
-        allowed_attributes = ['src','style','color','href']
+                        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'br', 'p','img','button','table','time','font']
+        allowed_attributes = ['src','alt','title','style','color','href']
         allowed_styles = ['color','font-weight']
-        target.body_html = bleach.linkify(bleach.clean(
-            markdown(value, output_format='html', extensions=['fenced_code']),
+        # Clean and linkify in one parser pass: running linkify again would
+        # double-escape entities inside code examples (e.g. &quot;).
+        cleaner = bleach.Cleaner(
             tags=allowed_tags, attributes=allowed_attributes,
             css_sanitizer=CSSSanitizer(allowed_css_properties=allowed_styles), strip=True,
-            protocols = ['http', 'https', 'mailto','ed2k','thunder']))
+            protocols=['http', 'https', 'mailto', 'ed2k', 'thunder'],
+            filters=[partial(LinkifyFilter, skip_tags=['pre', 'code'])])
+        target.body_html = cleaner.clean(markdown(value, output_format='html', extensions=['fenced_code']))
 
     def to_json(self):
         json_post = {

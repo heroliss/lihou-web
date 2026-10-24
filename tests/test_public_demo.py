@@ -154,6 +154,62 @@ class PublicDemoTests(unittest.TestCase):
         self.assertEqual(self.submit('/post/1', {'body': 'x' * 2001}).status_code, 413)
         self.assertEqual(self.submit('/edit-profile', {'about_me': 'x' * 501}).status_code, 413)
 
+    def test_guest_default_article_limit_is_shared_and_upgrade_immediately_removes_it(self):
+        uid = self.start()
+        self.assertEqual(self.app.config['PUBLIC_DEMO_MAX_POSTS'], 10)
+        target = '/projects/outpost/talk/'
+        for index in range(10):
+            path = '/' if index % 2 == 0 else target
+            response = self.submit(path, {'body': f'Guest article {index + 1}'}, token_path=path)
+            self.assertEqual(response.status_code, 302)
+        for path in ('/', target):
+            response = self.submit(path, {'body': 'Must wait for account'}, token_path=path)
+            self.assertEqual(response.status_code, 429)
+            self.assertIn('访客最多发布 10 篇', response.get_data(as_text=True))
+            self.assertIn('创建账号后不限篇数', response.get_data(as_text=True))
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            self.assertEqual(user.posts.count(), 10)
+            post_id = user.posts.first().id
+            original_ids = {post.id for post in user.posts}
+        # The article ceiling applies only to creating articles, not existing work or replies.
+        self.assertEqual(self.submit(f'/edit/{post_id}', {'body': 'Edited at the article limit'}).status_code, 302)
+        self.assertEqual(self.submit('/post/1', {'body': 'A reply at the article limit'}).status_code, 302)
+        self.assertEqual(self.client.get(target).status_code, 200)
+        self.assertEqual(self.register().status_code, 302)
+        with self.client.session_transaction() as saved:
+            self.assertEqual(saved['public_demo_uid'], str(uid))
+        for path in ('/', target):
+            self.assertEqual(self.submit(path, {'body': 'Account can continue'}, token_path=path).status_code, 302)
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            self.assertTrue(user.is_registered)
+            self.assertEqual(user.posts.count(), 12)
+            self.assertTrue(original_ids.issubset({post.id for post in user.posts}))
+
+    def test_account_articles_are_unlimited_while_body_rate_and_storage_limits_remain(self):
+        self.assertIsNone(self.app.config['PUBLIC_ACCOUNT_MAX_POSTS'])
+        self.assertEqual(self.register().status_code, 302)
+        with self.client.session_transaction() as saved:
+            uid = int(saved['public_demo_uid'])
+        with self.app.app_context():
+            # Exceed the previous 1,000-article ceiling without making 1,001 web writes.
+            db.session.add_all(Post(author_id=uid, body=f'Existing account article {index}')
+                               for index in range(1001))
+            db.session.commit()
+        for path in ('/', '/projects/outpost/talk/'):
+            self.assertEqual(self.submit(path, {'body': 'Beyond the old account ceiling'}, token_path=path).status_code, 302)
+        self.assertEqual(self.submit('/', {'body': 'x' * 20001}).status_code, 413)
+        self.app.config['PUBLIC_DEMO_WRITE_LIMIT'] = 3
+        response = self.submit('/', {'body': 'Rate limit still applies'})
+        self.assertEqual(response.status_code, 429)
+        self.assertIn('操作有些频繁', response.get_data(as_text=True))
+        self.app.config['PUBLIC_DEMO_WRITE_LIMIT'] = 60
+        self.app.config['PUBLIC_DEMO_MAX_STORAGE_BYTES'] = 1
+        self.assertEqual(self.submit('/', {'body': 'Storage limit still applies'}).status_code, 503)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(User, uid).posts.count(), 1003)
+
     def test_write_rate_limit_and_retry_after(self):
         self.start()
         self.app.config['PUBLIC_DEMO_WRITE_LIMIT'] = 1

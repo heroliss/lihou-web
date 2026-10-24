@@ -222,7 +222,7 @@ textarea.form-control { resize: vertical; }
 .form-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 24px; }
 .form-pending { color: var(--muted); font-size: .75rem; }
 .form-notice { padding: 12px 15px; margin-bottom: 22px; background: var(--accent-soft); border-radius: 6px; color: var(--muted); font-size: .75rem; }
-.writing-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 17px; align-items: stretch; }
+.writing-workspace { display: block; min-width: 0; }
 .writing-workspace>.flask-pagedown { min-width: 0; }
 .writing-workspace textarea { min-height: 350px; height: 100%; font-size: .875rem; line-height: 1.85; }
 .flask-pagedown-preview { position: relative; min-width: 0; min-height: 350px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 42px 16px 18px; line-height: 1.9; font-size: .8125rem; overflow-wrap: anywhere; }
@@ -237,6 +237,56 @@ textarea.form-control { resize: vertical; }
 .flask-pagedown-preview ul, .flask-pagedown-preview ol { padding-left: 21px; }
 .editor-page { max-width: 1050px; margin-inline: auto; }
 .editor-page .writing-workspace textarea, .editor-page .flask-pagedown-preview { min-height: 460px; }
+.writing-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.writing-label label { margin: 0; }
+.writing-label label span { margin-left: 10px; color: var(--subtle); font-size: .6875rem; font-weight: 400; }
+.writing-label>a { flex-shrink: 0; font-size: .75rem; }
+.writing-policy { display: flex; gap: 12px 20px; justify-content: space-between; align-items: center; padding-top: 15px; margin-top: 15px; border-top: 1px solid var(--line); font-size: .75rem; }
+.writing-policy p { margin: 0; }
+.writing-policy strong { font-weight: 500; color: var(--text); }
+.writing-policy p span { display: block; color: var(--subtle); margin-top: 2px; font-size: .6875rem; }
+.writing-policy>a { max-width: 18em; text-align: right; }
+.account-writing-note { color: var(--muted); border-left: 2px solid var(--accent); padding-left: 12px; font-size: .8125rem; }
+.account-writing-note a { display: inline-block; }
+.EasyMDEContainer { min-width: 0; color: var(--text); }
+.EasyMDEContainer .CodeMirror { background: var(--input); border-color: var(--line); border-radius: 0 0 6px 6px; color: var(--text); font: .875rem/1.85 "Cascadia Code", Consolas, "Microsoft YaHei", monospace; padding: 14px 10px; }
+.EasyMDEContainer .CodeMirror-focused { border-color: var(--accent); }
+.EasyMDEContainer .CodeMirror-cursor { border-color: var(--accent); }
+.EasyMDEContainer .CodeMirror-selected { background: var(--raised); }
+.EasyMDEContainer .CodeMirror-focused .CodeMirror-selected { background: var(--accent-soft); }
+.EasyMDEContainer .CodeMirror .CodeMirror-placeholder { color: var(--subtle); }
+.EasyMDEContainer .cm-header, .EasyMDEContainer .cm-strong { color: var(--text); }
+.EasyMDEContainer .cm-link, .EasyMDEContainer .cm-url { color: var(--accent); }
+.EasyMDEContainer .cm-quote, .EasyMDEContainer .cm-comment { color: var(--muted); }
+.EasyMDEContainer .editor-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 8px; border-color: var(--line); border-radius: 6px 6px 0 0; background: var(--raised); opacity: 1; }
+.EasyMDEContainer .editor-toolbar button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 34px; margin: 0; color: var(--muted); border: 1px solid transparent; border-radius: 4px; }
+.EasyMDEContainer .editor-toolbar button svg { width: 18px; height: 18px; }
+.EasyMDEContainer .editor-toolbar button:hover, .EasyMDEContainer .editor-toolbar button.active { background: var(--surface); color: var(--accent); border-color: var(--line); }
+.EasyMDEContainer .editor-toolbar button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.EasyMDEContainer .editor-toolbar i.separator { color: transparent; border-left: 1px solid var(--line); border-right: 0; height: 19px; margin: 0 6px; }
+.EasyMDEContainer .editor-statusbar { padding: 7px 1px; color: var(--subtle); font-size: .6875rem; }
+.EasyMDEContainer .editor-statusbar span { margin-left: 0; }
+.EasyMDEContainer .editor-preview { background: var(--input); color: var(--text); padding: 18px; font: .875rem/1.9 "Segoe UI", "Microsoft YaHei", sans-serif; overflow-wrap: anywhere; }
+.EasyMDEContainer .editor-preview h1 { font-size: 1.5rem; }
+.EasyMDEContainer .editor-preview h2 { font-size: 1.25rem; }
+.EasyMDEContainer .editor-preview h3 { font-size: 1.1rem; }
+.EasyMDEContainer .editor-preview pre { padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; overflow-x: auto; color: var(--text); }
+.EasyMDEContainer .editor-preview code { font-family: Consolas, monospace; color: var(--accent); }
+.EasyMDEContainer .editor-preview pre code { color: inherit; }
+.EasyMDEContainer .editor-preview blockquote { margin-left: 0; padding-left: 14px; border-left: 2px solid var(--accent); color: var(--muted); }
+.EasyMDEContainer .editor-preview img { display: block; max-width: 100%; height: auto; border-radius: 5px; }
+.EasyMDEContainer .editor-preview-side { border-color: var(--line); border-radius: 0 0 6px; }
+.EasyMDEContainer .CodeMirror-sided { border-radius: 0 0 0 6px; }
+.EasyMDEContainer .editor-toolbar.fullscreen { z-index: 102; background: var(--surface); }
+.EasyMDEContainer .CodeMirror-fullscreen { background: var(--input); z-index: 101; }
+.EasyMDEContainer .editor-preview-side.editor-preview-active-side { z-index: 103; }
+@media (max-width: 600px) {
+  .writing-policy { display: block; }
+  .writing-policy>a { display: inline-block; margin-top: 8px; text-align: left; }
+  .EasyMDEContainer .editor-toolbar { padding: 6px; gap: 0; }
+  .EasyMDEContainer .editor-toolbar button { width: 32px; height: 36px; }
+  .EasyMDEContainer .editor-toolbar i.separator { margin-inline: 3px; }
+}
 .page-heading { margin: 4px 0 32px; }
 .page-heading h1 { font-size: 1.75rem; margin: 0 0 10px; letter-spacing: -.02em; }
 .page-heading>p { color: var(--muted); font-size: .875rem; margin: 0; }

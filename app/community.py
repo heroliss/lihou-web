@@ -91,6 +91,15 @@ def project_context():
     return {'project_catalog': PROJECTS, 'email_accounts_enabled': email_accounts_enabled}
 
 
+@community.get('/writing-guide/')
+def writing_guide():
+    from .writing_guide import get_published_writing_guide
+    guide = get_published_writing_guide()
+    if guide is None:
+        abort(404, description='写作指南尚未发布。')
+    return redirect(url_for('main.post', id=guide.id))
+
+
 @community.route('/projects/<slug>/talk/', methods=['GET', 'POST'])
 def project_talk(slug):
     if slug not in PROJECTS:

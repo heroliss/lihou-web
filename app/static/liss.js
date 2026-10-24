@@ -17,19 +17,6 @@
     updateThemeButton();
   });
   updateThemeButton();
-  // PageDown 1.0 predates fenced_code. Escape fenced content before conversion;
-  // its existing sanitizing converter still processes the complete HTML output.
-  if (window.Markdown && typeof window.Markdown.getSanitizingConverter === 'function') {
-    var previewConverter = window.Markdown.getSanitizingConverter();
-    previewConverter.hooks.chain('preConversion', function (source) {
-      var fences = /^(\x60{3,}|~{3,})[ ]*(?:\{[^\n]*\}|\.?[\w#.+-]*[ ]*(?:hl_lines=(?:"[^"\n]*"|'[^'\n]*')[ ]*)?)\n([\s\S]*?)^\1[ ]*$/gm;
-      return source.replace(fences, function (block, fence, code) {
-        var escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        return '\n\n<pre><code>' + escaped + '</code></pre>\n\n';
-      });
-    });
-    window.flask_pagedown_converter = function (source) { return previewConverter.makeHtml(source); };
-  }
   document.querySelectorAll('[data-dismiss-message]').forEach(function (button) {
     button.addEventListener('click', function () { button.closest('.site-flash').remove(); });
   });
@@ -46,20 +33,12 @@
     var input = composer.querySelector('textarea');
     if (input) input.focus({ preventScroll: true });
     composer.scrollIntoView({ block: 'start' });
+    document.dispatchEvent(new Event('liss:write'));
   }
   openWriting();
   window.addEventListener('hashchange', openWriting);
   document.querySelectorAll('a[href$="#write"]').forEach(function (link) {
     link.addEventListener('click', function () { if (location.hash === '#write') openWriting(); });
-  });
-  document.querySelectorAll('.flask-pagedown-preview').forEach(function (preview) {
-    preview.setAttribute('role', 'region');
-    preview.setAttribute('aria-label', 'Markdown 实时预览');
-  });
-  window.addEventListener('load', function () {
-    document.querySelectorAll('.flask-pagedown-input').forEach(function (input) {
-      input.addEventListener('input', function () { if (typeof input.onkeyup === 'function') input.onkeyup(); });
-    });
   });
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') document.querySelectorAll('.account-menu[open]').forEach(function (menu) { menu.open = false; menu.querySelector('summary').focus(); });

@@ -1,8 +1,7 @@
 {% extends "base.html" %}
-{% import "_forms.html" as forms %}
+{% import "_forms.html" as forms with context %}
 {% import "_ui.html" as ui with context %}
 {% block title %}{{ super() }}编辑文章{% endblock %}
 {% block page_content %}
-<div class="editor-page"><a class="back-link" href="{{ url_for('main.index') }}">{{ ui.icon('back') }}返回文章列表</a><header class="page-heading"><h1>继续这篇文章</h1><p>把想说的写清楚，右侧可以随时查看排版。</p></header>{{ forms.render_form(form, '保存修改', 'writing-form') }}</div>
+<div class="editor-page"><a class="back-link" href="{{ url_for('main.index') }}">{{ ui.icon('back') }}返回文章列表</a><header class="page-heading"><h1>继续这篇文章</h1><p>把想说的写清楚，用预览或分屏随时查看排版。</p></header>{{ forms.render_form(form, '保存修改', 'writing-form') }}</div>
 {% endblock %}
-{% block scripts %}{{ super() }}{{ pagedown.include_pagedown() }}{% endblock %}

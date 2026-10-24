@@ -1,0 +1,48 @@
+[
+  {
+    "package": "easymde",
+    "version": "2.21.0",
+    "npm_integrity": "sha512-5uE7I/DEN8gvGRwxaqAv7h1PMEK2ykNXVX5zL0dK3nCYROGja3AMbdQz8eCEELnfvCfy7tRkTmLuvyJG8uSWjQ==",
+    "source": "https://registry.npmjs.org/easymde/-/easymde-2.21.0.tgz",
+    "files": [
+      {
+        "name": "easymde.min.js",
+        "bytes": 327475,
+        "sha256": "2c06bddfd0c89176db08ccf9d42e2beaa9b4f1a4ff8fb2ec0bf1bed25ce08e05"
+      },
+      {
+        "name": "easymde.min.css",
+        "bytes": 12923,
+        "sha256": "6eee36340432776d682e7372ec4a7eb29be4fdb3ffada32c0bfa5e31a5ef34a2"
+      },
+      {
+        "name": "LICENSE",
+        "bytes": 1119,
+        "sha256": "98eee44a1cdad5ad0bb0ea976791ab57b5eef7ac4cafeb162f30e3808564a564"
+      }
+    ]
+  },
+  {
+    "package": "dompurify",
+    "version": "3.4.17",
+    "npm_integrity": "sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==",
+    "source": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.17.tgz",
+    "files": [
+      {
+        "name": "purify.min.js",
+        "bytes": 29828,
+        "sha256": "cd37898f9782adf54820c413191b5691803f0f137c799d6edcfd38523b4c2c31"
+      },
+      {
+        "name": "LICENSE",
+        "bytes": 11358,
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      },
+      {
+        "name": "LICENSE-MPL",
+        "bytes": 16726,
+        "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+      }
+    ]
+  }
+]

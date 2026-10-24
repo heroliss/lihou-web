@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% import "_forms.html" as forms %}
+{% import "_forms.html" as forms with context %}
 {% import "_macros.html" as macros %}
 {% import "_ui.html" as ui with context %}
 {% block title %}{{ super() }}文章{% endblock %}
@@ -27,4 +27,3 @@
 </aside>
 </div>
 {% endblock %}
-{% block scripts %}{{ super() }}{{ pagedown.include_pagedown() }}{% endblock %}
