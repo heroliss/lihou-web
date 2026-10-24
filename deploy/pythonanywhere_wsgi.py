@@ -9,7 +9,9 @@ from pathlib import Path
 import sys
 
 account = Path('/home/YOUR_USERNAME')
-project = account / 'liss-web'
+project = account / 'liss-community'
+if not project.is_dir() and (account / 'liss-web').is_dir():
+    project = account / 'liss-web'
 if not project.is_dir() and (account / 'lihou-web').is_dir():
     project = account / 'lihou-web'  # Compatibility with an existing checkout.
 private = account / '.config' / 'lihou-web-demo.json'

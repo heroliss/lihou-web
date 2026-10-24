@@ -11,7 +11,8 @@ from zipfile import ZipFile
 
 
 def install(url, expected_sha, destination):
-    if not url.startswith('https://github.com/heroliss/liss-web/releases/download/'):
+    if not any(url.startswith(f'https://github.com/heroliss/{name}/releases/download/')
+               for name in ('liss-community', 'liss-web')):
         raise ValueError('Use a public Liss Web GitHub Release asset.')
     if not re.fullmatch('[a-fA-F0-9]{64}', expected_sha):
         raise ValueError('A SHA-256 digest is required.')

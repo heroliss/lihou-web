@@ -56,8 +56,8 @@ class EmailAccountsTests(unittest.TestCase):
         with client.session_transaction() as saved:
             return int(saved['public_demo_uid'])
 
-    def register(self, email='writer@example.com', client=None, nickname='Writer'):
-        return self.submit('/auth/register', {'email': email, 'nickname': nickname,
+    def register(self, email='writer@example.com', client=None, nickname='Writer', username='writer_one'):
+        return self.submit('/auth/register', {'email': email, 'nickname': nickname, 'username': username,
             'password': 'Good-password-123', 'password2': 'Good-password-123'}, client=client)
 
     def latest_link(self):
@@ -72,12 +72,13 @@ class EmailAccountsTests(unittest.TestCase):
     def test_email_registration_is_normalized_private_and_unverified(self):
         page = self.client.get('/auth/register').get_data(as_text=True)
         self.assertIn('name="email"', page)
-        self.assertNotIn('name="username"', page)
+        self.assertIn('name="username"', page)
+        self.assertIn('电子邮箱（可选）', page)
         self.assertEqual(self.register(' WRITER@EXAMPLE.COM ').status_code, 302)
         with self.app.app_context():
             user = User.query.filter_by(email='writer@example.com').one()
             self.assertFalse(user.confirmed)
-            self.assertTrue(user.username.startswith('member_'))
+            self.assertEqual(user.username, 'writer_one')
             self.assertEqual(user.name, 'Writer')
             self.assertFalse(user.is_administrator())
         message = self.app.extensions['liss_mail_outbox'][0]
@@ -95,13 +96,12 @@ class EmailAccountsTests(unittest.TestCase):
         with self.app.app_context():
             before = {table: db.session.execute(db.text(f'SELECT count(*) FROM {table}')).scalar()
                       for table in ['users', 'posts', 'comments', 'follows']}
-            handle = db.session.get(User, uid).username
         self.assertEqual(self.register(nickname='').status_code, 302)
         with self.client.session_transaction() as saved:
             self.assertEqual(saved['public_demo_uid'], str(uid))
         with self.app.app_context():
             user = db.session.get(User, uid)
-            self.assertEqual(user.username, handle)
+            self.assertEqual(user.username, 'writer_one')
             self.assertEqual(user.name, 'Existing name')
             self.assertFalse(user.confirmed)
             self.assertEqual(user.posts.first().body, 'Keep the guest article')
@@ -130,7 +130,9 @@ class EmailAccountsTests(unittest.TestCase):
     def test_email_login_and_case_insensitive_duplicate(self):
         self.register()
         other = self.app.test_client()
-        self.assertEqual(self.register('WRITER@EXAMPLE.COM', client=other).status_code, 200)
+        duplicate = self.register('WRITER@EXAMPLE.COM', client=other, username='another_writer')
+        self.assertEqual(duplicate.status_code, 200)
+        self.assertIn('这个邮箱已被使用', duplicate.get_data(as_text=True))
         response = self.submit('/auth/login', {'username': ' WRITER@EXAMPLE.COM ',
             'password': 'Good-password-123'}, client=other)
         self.assertEqual(response.status_code, 302)
@@ -300,11 +302,67 @@ class EmailAccountsTests(unittest.TestCase):
     def test_unconfigured_service_preserves_legacy_registration(self):
         self.app.config.update(LISS_MAIL_PROVIDER='brevo', LISS_MAIL_API_KEY='')
         page = self.client.get('/auth/register').get_data(as_text=True)
-        self.assertIn('邮箱注册与邮件找回暂未开通', page)
+        self.assertIn('邮件绑定与找回暂未开通', page)
         self.assertIn('name="username"', page)
         self.assertNotIn('name="email"', page)
         self.assertEqual(self.submit('/auth/register', {'username': 'still_works',
             'password': 'Good-password-123', 'password2': 'Good-password-123'}).status_code, 302)
+        self.assertNotIn('liss_mail_outbox', self.app.extensions)
+
+    def test_optional_email_can_be_blank_with_full_account_access_and_no_mail_request(self):
+        page = self.client.get('/auth/register').get_data(as_text=True)
+        self.assertIn('电子邮箱（可选）', page)
+        with patch('app.public_accounts.deliver_account_email', side_effect=AssertionError('No email should be sent')):
+            with patch.object(self.app.extensions['public_demo'], 'limit_mail', side_effect=AssertionError('No mail quota should be used')):
+                self.assertEqual(self.register(email='', username='no_email', nickname='My nickname').status_code, 302)
+        with self.app.app_context():
+            user = User.query.filter_by(username='no_email').one()
+            self.assertIsNone(user.email)
+            self.assertTrue(user.confirmed)
+            self.assertTrue(user.is_registered)
+            self.assertEqual(user.name, 'My nickname')
+        self.app.config['PUBLIC_DEMO_MAX_POSTS'] = 1
+        self.assertEqual(self.submit('/', {'body': 'Ordinary account first article'}).status_code, 302)
+        self.assertEqual(self.submit('/', {'body': 'Ordinary account second article'}).status_code, 302)
+        other = self.app.test_client()
+        self.assertEqual(self.submit('/auth/login', {'username': 'NO_EMAIL',
+            'password': 'Good-password-123'}, client=other).status_code, 302)
+
+    def test_optional_email_can_be_bound_after_registration_and_rebound(self):
+        self.assertEqual(self.register(email='', username='bind_later').status_code, 302)
+        with self.app.app_context():
+            uid = User.query.filter_by(username='bind_later').one().id
+        self.assertEqual(self.submit('/auth/change-email', {'email': 'first@example.com',
+            'password': 'Good-password-123'}).status_code, 302)
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(User, uid).email)
+        self.app.test_client().get(self.latest_link())
+        self.assertEqual(self.submit('/auth/change-email', {'email': 'second@example.com',
+            'password': 'Good-password-123'}).status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(User, uid).email, 'first@example.com')
+        self.app.test_client().get(self.latest_link())
+        with self.app.app_context():
+            user = db.session.get(User, uid)
+            self.assertEqual(user.email, 'second@example.com')
+            self.assertEqual(user.username, 'bind_later')
+            self.assertTrue(user.confirmed)
+        other = self.app.test_client()
+        self.assertEqual(self.submit('/auth/login', {'username': 'bind_later',
+            'password': 'Good-password-123'}, client=other).status_code, 302)
+
+    def test_nonempty_invalid_email_is_rejected_and_unavailable_email_is_not_bound(self):
+        response = self.register(email='invalid-address')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('liss_mail_outbox', self.app.extensions)
+        with self.app.app_context():
+            self.assertIsNone(User.query.filter_by(username='writer_one').first())
+        self.app.config.update(LISS_MAIL_PROVIDER='brevo', LISS_MAIL_API_KEY='')
+        self.assertEqual(self.register(email='not-sent@example.com').status_code, 302)
+        with self.app.app_context():
+            user = User.query.filter_by(username='writer_one').one()
+            self.assertIsNone(user.email)
+            self.assertTrue(user.confirmed)
         self.assertNotIn('liss_mail_outbox', self.app.extensions)
 
     def test_registration_resend_and_reset_require_csrf(self):

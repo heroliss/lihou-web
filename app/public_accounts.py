@@ -1,7 +1,6 @@
 """Durable visitor upgrades and optional verified-email accounts for LISS."""
 import hashlib
 import hmac
-import secrets
 
 from flask import current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_user, logout_user
@@ -11,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from wtforms import SubmitField
 
 from . import db
-from .auth.forms import (AccountEmailForm, EmailPasswordResetForm, EmailRegistrationForm,
+from .auth.forms import (AccountEmailForm, EmailPasswordResetForm,
                          EmailResetRequestForm, PublicLoginForm, PublicRegistrationForm)
 from .models import Role, User
 from .transactional_mail import account_link, deliver_account_email, email_accounts_enabled
@@ -111,29 +110,23 @@ def register():
     sandbox = current_app.extensions['public_demo']
     upgrading_guest = sandbox.participant() and current_user.is_visitor
     email_ready = email_accounts_enabled()
-    form = EmailRegistrationForm() if email_ready else PublicRegistrationForm()
+    form = PublicRegistrationForm(email_enabled=email_ready)
     if form.validate_on_submit():
-        if email_ready:
-            sandbox.limit_mail(form.email.data)
+        email = (form.email.data or None) if email_ready else None
+        if email:
+            sandbox.limit_mail(email)
         ordinary_role = Role.query.filter_by(default=True).first()
         if upgrading_guest:
             user = db.session.get(User, current_user.id)
         else:
             sandbox.check_identity_capacity()
             user = User(role=ordinary_role)
-        if email_ready:
-            if not upgrading_guest:
-                user.username = 'member_' + secrets.token_hex(10)
-            user.email = form.email.data
-            user.confirmed = False
-            if not upgrading_guest and not form.nickname.data:
-                user.name = '新朋友'
-        else:
-            user.username = form.username.data
-            user.email = None
-            user.confirmed = True
-            if not upgrading_guest:
-                user.name = form.username.data
+        user.username = form.username.data
+        user.email = email
+        # Email is optional; a password account without one is fully usable.
+        user.confirmed = not bool(email)
+        if not upgrading_guest:
+            user.name = form.username.data
         user.password = form.password.data
         if form.nickname.data:
             user.name = form.nickname.data
@@ -149,7 +142,7 @@ def register():
             return render_template('auth/register.html', form=form, upgrading_guest=upgrading_guest,
                                    email_ready=email_ready)
         establish_identity(user)
-        if email_ready:
+        if email:
             _delivery_notice(send_confirmation(user))
         else:
             flash('账号已创建，原有内容已保留。' if upgrading_guest else '欢迎加入 LISS。')

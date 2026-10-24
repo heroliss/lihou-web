@@ -430,6 +430,7 @@ textarea.form-control { resize: vertical; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 
 .nav-works { color: var(--muted); white-space: nowrap; }
+.brand-community { font-size: .65rem; font-weight: 500; letter-spacing: .12em; color: var(--muted); margin-left: 8px; }
 .nav-works:hover, .nav-works:focus-visible { color: var(--accent); }
 .project-discussion-heading { padding: 0 0 28px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
 .project-discussion-heading h1 { font-size: clamp(1.8rem, 4vw, 2.7rem); line-height: 1.2; overflow-wrap: anywhere; margin: 10px 0 16px; letter-spacing: -.035em; }
@@ -447,6 +448,7 @@ textarea.form-control { resize: vertical; }
 .email-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; color: var(--muted); font-size: .8125rem; }
 .email-status p { margin: 0; }
 @media (max-width: 600px) {
+  .brand-community { display: none; }
   .project-discussion-heading { margin-bottom: 20px; padding-bottom: 20px; }
   .project-discussion-heading>p:last-child { font-size: .875rem; }
   .project-eyebrow { margin-top: 23px; }

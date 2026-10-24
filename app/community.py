@@ -25,7 +25,7 @@ PROJECTS = {
     'aoe4-autovillager-tool': ('AOE4 Flow Editor', '节点式游戏辅助工具'),
     'ga-sort': ('GA-sort', '遗传算法实验'),
     'floydshortestpath': ('FloydShortestPath', 'Unity 寻路算法'),
-    'liss-web': ('Liss Web', '写作与交流社区'),
+    'liss-web': ('Liss Community', '写作与交流社区'),
 }
 
 

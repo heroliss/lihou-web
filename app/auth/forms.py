@@ -8,19 +8,31 @@ from sqlalchemy import func
 
 
 class PublicLoginForm(FlaskForm):
-    username = StringField('邮箱或原用户名', validators=[Required(), Length(3, 254)])
+    username = StringField('邮箱或用户名', validators=[Required(), Length(3, 254)])
     password = PasswordField('密码', validators=[Required(), Length(8, 128)])
     submit = SubmitField('登录')
+
+
+def normalize_email(value):
+    return (value or '').strip().lower()
 
 
 class PublicRegistrationForm(FlaskForm):
     username = StringField('用户名', validators=[Required(), Length(3, 32),
         Regexp(r'^[A-Za-z][A-Za-z0-9_.]*$', message='以字母开头，可包含字母、数字、点和下划线。')])
     nickname = StringField('昵称（可选）', validators=[Optional(), Length(max=64)])
+    email = StringField('电子邮箱（可选）', validators=[Optional(), Length(3, 64), Email()],
+                        filters=[normalize_email],
+                        description='可留空，注册后也能绑定或更换。验证后可用于找回密码，不公开显示。')
     password = PasswordField('密码', validators=[Required(), Length(8, 128),
         EqualTo('password2', message='两次密码不一致。')])
     password2 = PasswordField('确认密码', validators=[Required()])
     submit = SubmitField('创建账号')
+
+    def __init__(self, *args, email_enabled=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not email_enabled:
+            del self.email
 
     def validate_username(self, field):
         name = field.data.lower()
@@ -28,21 +40,6 @@ class PublicRegistrationForm(FlaskForm):
             raise ValidationError('此用户名已保留，请选择其他名称。')
         if User.query.filter(func.lower(User.username) == name).first():
             raise ValidationError('此用户名已被使用。')
-
-
-def normalize_email(value):
-    return (value or '').strip().lower()
-
-
-class EmailRegistrationForm(FlaskForm):
-    email = StringField('电子邮箱', validators=[Required(), Length(3, 64), Email()],
-                        filters=[normalize_email],
-                        description='用于登录、验证身份和找回密码，不公开显示。')
-    nickname = StringField('昵称（可选）', validators=[Optional(), Length(max=64)])
-    password = PasswordField('密码', validators=[Required(), Length(8, 128),
-        EqualTo('password2', message='两次密码不一致。')])
-    password2 = PasswordField('确认密码', validators=[Required()])
-    submit = SubmitField('创建账号并发送验证邮件')
 
     def validate_email(self, field):
         if User.query.filter(func.lower(User.email) == field.data).first():

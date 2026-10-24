@@ -12,7 +12,7 @@ LISS 是访客优先、可选账号的持久化写作与交流站点。内部配
 
 部署已审核的构建包时，先按通常流程备份并更新源码，然后运行 `deploy/install_portfolio.py --url <GitHub-Release附件URL> --sha256 <已核对SHA256>`。安装器验证包体摘要、子路径和路径边界，保留旧构建作为 `portfolio-previous-*`；不会删除数据库或源码。发布媒体约 18.3 MB，不是每次访问的流量。作品目录无需 Python 重新构建或 Node 环境。
 
-## 邮箱注册、验证与密码找回
+## 可选邮箱、验证与密码找回
 
 当前推荐 Brevo 免费事务邮件 API（300 封 / 日，免信用卡）；PythonAnywhere 免费白名单支持 `api.brevo.com`，使用 HTTPS 接口。无自有域名可先验证单个发件邮箱，但 Brevo 可能临时改写发件地址；长期建议自有域名认证。Resend 也受支持，正式发给任意访客需认证自己的域名，测试域名只能向账户本人发送。额度与条件以服务商实际审核和官方页面为准，不保证永远免费或每封进收件箱。
 
@@ -29,25 +29,25 @@ LISS 是访客优先、可选账号的持久化写作与交流站点。内部配
 }
 ```
 
-使用更新后的 WSGI / 管理脚本加载显式允许的这些配置，Reload 后默认切换为邮箱注册。未提供完整配置则保持兼容注册，绝不伪报已发邮件。`LISS_PUBLIC_BASE_URL` 必须是固定 HTTPS 源站，验证和找回链接不使用访客提交的 Host。`LISS_MAIL_TIMEOUT` 默认 10 秒；失败提示可重试，服务商接受邮件也不等于用户收件箱已收到。
+使用更新后的 WSGI / 管理脚本加载显式允许的这些配置，Reload 后注册页显示可选邮箱字段。未提供完整配置则保持兼容注册，绝不伪报已发邮件。`LISS_PUBLIC_BASE_URL` 必须是固定 HTTPS 源站，验证和找回链接不使用访客提交的 Host。`LISS_MAIL_TIMEOUT` 默认 10 秒；失败提示可重试，服务商接受邮件也不等于用户收件箱已收到。
 
 确认、绑定与找回链接 1 小时有效，绑定用户 ID、用途、邮箱和密码摘要；重置密码后原链接不可再用，其他浏览器旧登录会话下次请求会撤销。本人正常改密会保持当前会话，撤销其他旧会话。本次更新前的无凭据指纹注册账号需重新登录一次；旧访客 Cookie 与全部内容继续保留。
 
-未验证账号仍可浏览、写作和编辑自己的内容，配额与访客一致；确认后取得普通账号配额。找回只向已经验证的邮箱尝试发信，响应不透露邮箱是否注册。旧用户名账号可在“邮箱与账号”中用当前密码申请绑定；新邮箱确认之前保留原邮箱。邮箱不会在个人资料中公开显示。
+不填邮箱的注册账号拥有普通账号配额；若选择绑定邮箱，则待验证期间仍可写作和编辑，暂使用访客配额，确认后恢复普通账号配额。找回只向已经验证的邮箱尝试发信，响应不透露邮箱是否注册。旧用户名账号可在“邮箱与账号”中用当前密码申请绑定；新邮箱确认之前保留原邮箱。邮箱不会在个人资料中公开显示。
 
 发信在表单和 CSRF 检查后限速：同邮箱 60 秒冷却、同 IP 每小时 20 次请求，键以 HMAC 保存于 SQLite，不保存邮箱或 IP 明文。普通认证限流仍适用。`outbox` 仅在显式 `TESTING=True` 的隔离测试生效，不能作为生产发信配置。
 
 官方资料：[Brevo 免费计划](https://help.brevo.com/hc/en-us/articles/208589409-About-Brevo-s-pricing-plans)、[发件人认证](https://help.brevo.com/hc/en-us/articles/208836149-Create-a-new-sender-From-name-and-From-email)、[域名与发件地址改写](https://help.brevo.com/hc/en-us/articles/14925263522578-Comply-with-Gmail-Yahoo-and-Microsoft-s-requirements-for-email-senders)、[PythonAnywhere 白名单](https://www.pythonanywhere.com/whitelist/)、[Resend 测试域名限制](https://resend.com/docs/knowledge-base/403-error-resend-dev-domain)。
 
-**[线上站点](https://liss.pythonanywhere.com/)** · **[GitHub](https://github.com/heroliss/liss-web)**。2026-10-24 已在 PythonAnywhere 免费 Web app / Manual / Python 3.13 上线原持久访客版本，完成 HTTPS、真实发文、预览、评论与 Reload 保留检查。本次账号 / 界面升级正在本地联调，不将本地结果冒称已发布。
+**[线上站点](https://liss.pythonanywhere.com/)** · **[GitHub](https://github.com/heroliss/liss-community)**。2026-10-24 已在 PythonAnywhere 免费 Web app / Manual / Python 3.13 上线原持久访客版本，完成 HTTPS、真实发文、预览、评论与 Reload 保留检查。本次账号 / 界面升级正在本地联调，不将本地结果冒称已发布。
 
 ## 访客与账号
 
-点击「开始写作」即可创建当前浏览器的独立访客身份。访客可真实发布、编辑自己的文章、回复、关注和填写个人资料。可选注册只需用户名、8–128 字符密码、确认密码与可选昵称，不要求邮箱或邮件确认。
+点击「开始写作」即可创建当前浏览器的独立访客身份。访客可真实发布、编辑自己的文章、回复、关注和填写个人资料。注册只需用户名、8–128 字符密码、确认密码与可选昵称；邮箱始终可选。邮件服务配置完成后可在注册时填写，或以后再绑定 / 更换。
 
-当前访客注册时直接升级原用户记录，ID、文章、评论、资料和关注都保留。已有账号可用用户名与密码在其他浏览器登录；登录仅切换身份，不合并其他访客内容。账号支持修改密码，公开站暂不支持邮箱确认、邮件找回、外部头像设置、管理和公共 API。
+当前访客注册时直接升级原用户记录，ID、文章、评论、资料和关注都保留。已有账号可用用户名与密码在其他浏览器登录；登录仅切换身份，不合并其他访客内容。账号支持修改密码；已绑定并验证邮箱后支持邮件找回。公开站仍不开放外部头像设置、管理和公共 API。
 
-访客 Cookie 是 30 天滚动会话。清除 Cookie、无痕浏览、换设备或 Cookie 失效可能使原访客无法认回，但不删除原账户与内容；想在其他设备继续编辑可在身份有效时升级为账号。密码丢失暂无法自行找回，需保存好登录信息。
+访客 Cookie 是 30 天滚动会话。清除 Cookie、无痕浏览、换设备或 Cookie 失效可能使原访客无法认回，但不删除原账户与内容；想在其他设备继续编辑可在身份有效时升级为账号。未绑定并验证邮箱时，密码丢失无法通过邮件找回，需保存好登录信息。
 
 公开内容应适合公开分享。所有写入有 CSRF 与单 IP 适度节流；关注只能通过 POST 提交。访客和账号均为普通角色，不可改写固定作者或其他人的内容。
 
@@ -86,9 +86,9 @@ LISS 是访客优先、可选账号的持久化写作与交流站点。内部配
 全新安装（已有部署直接按后文更新，不生成新密钥 / 新空库）：
 
 ```bash
-git clone https://github.com/heroliss/liss-web.git
-cd liss-web
-mkvirtualenv --python=python3.13 liss-web
+git clone https://github.com/heroliss/liss-community.git
+cd liss-community
+mkvirtualenv --python=python3.13 liss-community
 pip install -r requirements/public-demo.txt
 ```
 

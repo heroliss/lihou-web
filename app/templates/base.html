@@ -1,11 +1,11 @@
 {% extends "bootstrap/base.html" %}
 {% import "_ui.html" as ui with context %}
 {% block html_attribs %} lang="zh-CN" data-theme="dark"{% endblock %}
-{% block title %}LISS · {% endblock %}
+{% block title %}Liss Community · {% endblock %}
 {% block head %}
 {{ super() }}
 <meta name="theme-color" content="#0e151e" id="theme-color">
-<meta name="description" content="LISS，一个写作与交流的小地方。记录想法，分享发现，让对话继续。">
+<meta name="description" content="Liss Community，记录与交流的小地方。探索 Liss 的作品，分享想法，让对话继续。">
 <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
 <script>try{var t=localStorage.getItem('liss-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="stylesheet" href="{{ url_for('static', filename='liss.css') }}?v=20261024-3">
@@ -13,7 +13,7 @@
 {% block navbar %}
 <a class="skip-link" href="#main-content">跳到正文</a>
 <header class="site-header"><nav class="site-nav page-shell" aria-label="主导航">
-  <a class="wordmark" href="{{ url_for('main.index') }}" aria-label="LISS 首页">LISS<span class="brand-dot" aria-hidden="true"></span></a>
+  <a class="wordmark" href="{{ url_for('main.index') }}" aria-label="Liss Community 首页">LISS<span class="brand-dot" aria-hidden="true"></span><small class="brand-community">社区</small></a>
   <a class="nav-feed{% if request.endpoint in ['main.index','main.show_all','main.show_followed'] %} is-active{% endif %}" href="{{ url_for('main.index') }}">文章</a>
   <a class="nav-works" href="{{ url_for('community.portfolio') }}">作品</a>
   <div class="nav-actions">
@@ -45,7 +45,7 @@
   {% if config.get('PUBLIC_DEMO') and current_user.is_authenticated and current_user.is_registered and current_user.email and not current_user.confirmed %}<div class="email-status" role="status"><p>邮箱尚未确认。你仍可以继续写作和交流。</p><a href="{{ url_for('auth.unconfirmed') }}">确认邮箱 {{ ui.icon('arrow') }}</a></div>{% endif %}
   {% block page_content %}{% endblock %}
 </main>
-<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>by Liss</span></a><p>记录想法，分享发现，让对话继续。</p><a href="{{ url_for('community.portfolio') }}" class="footer-top">探索作品 {{ ui.icon('arrow') }}</a><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
+<footer class="site-footer page-shell"><a href="{{ url_for('main.index') }}" class="footer-brand">LISS <span>Community</span></a><p>记录想法，分享发现，让对话继续。</p><a href="{{ url_for('community.portfolio') }}" class="footer-top">探索作品 {{ ui.icon('arrow') }}</a><a href="#main-content" class="footer-top">回到顶部 {{ ui.icon('up') }}</a></footer>
 {% endblock %}
 {% block scripts %}
 {{ super() }}
